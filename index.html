@@ -622,10 +622,25 @@ function showSync(tipo, msg){
   const el = document.getElementById("syncIndicator");
   const dot = document.getElementById("sbDot");
   if(!el) return;
+
+  // Corrige o aviso visual para aparecer novamente a cada salvamento.
+  // Antes, após o primeiro "Salvo ✓", o indicador podia ficar preso em display:none.
+  el.style.display = "block";
+  el.style.opacity = "1";
+  el.style.animation = "none";
+
+  // Força o navegador a reiniciar a animação do aviso.
+  void el.offsetWidth;
+  el.style.animation = "";
+
   el.className = "sync-indicator " + tipo;
   el.textContent = msg || "";
+
   if(tipo === "saved"){
-    setTimeout(()=> el.style.display = "none", 2200);
+    setTimeout(()=> {
+      el.style.display = "none";
+    }, 2200);
+
     if(dot) dot.style.background = "#22c55e";
   } else if(tipo === "saving"){
     if(dot) dot.style.background = "#f59e0b";
