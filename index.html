@@ -998,8 +998,8 @@ function sincronizarEventosCadastroFuncionario(emp,fun,fsObj){
     const st=statusAnterior[chaveEvento(ev)] || ev.status || "Pendente"
     fsObj.eventos.push({...clone(ev),origem:"cadastro-funcionario",status:st})
     if(ev.desc){
-      emp.eventosPermitidos=emp.eventosPermitidos||[]
-      if(parseEventoLabel(ev.desc) && !emp.eventosPermitidos.includes(ev.desc))emp.eventosPermitidos.push(ev.desc)
+      // FIX v2.4b: NÃO forçar vínculo do evento na empresa ao sincronizar funcionário.
+      // O vínculo é gerenciado manualmente pelo usuário na aba Empresas/Códigos.
     }
   })
 }
@@ -1185,8 +1185,11 @@ async function iniciarApp(){
   setTimeout(()=>{ if(typeof limparEventosSemCadastro==="function" && limparEventosSemCadastro(false)>0) save(); },0);
   // Setup da UI
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.sec));
-  comp1.value=SEED.competenciaBase; comp2.value=SEED.competenciaBase;
-  const rc=document.getElementById("regraComp"); if(rc)rc.value=SEED.competenciaBase;
+  // FIX v2.4b: competência inicial = mês atual, não o mês do SEED
+  const hoje=new Date()
+  const compAtual=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")
+  comp1.value=compAtual; comp2.value=compAtual;
+  const rc=document.getElementById("regraComp"); if(rc)rc.value=compAtual;
   comp1.onchange=()=>{comp2.value=comp1.value;renderAll()};
   comp2.onchange=()=>{comp1.value=comp2.value;renderAll()};
   emp1.onchange=()=>{emp2.value=emp1.value;renderAll()};
