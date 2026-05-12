@@ -2192,9 +2192,54 @@ function mFunRenderAuto(){
   const box=document.getElementById("mfAutoLista"); if(!box)return
   box.innerHTML=funAutoTemp.length?funAutoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.evento)}</b><span>${esc(a.qtd)} por dia útil</span>${a.inicio?`<span>Início: ${esc(fmtMesRefLocal(a.inicio))}</span>`:""} ${a.fim?`<span>Fim: ${esc(fmtMesRefLocal(a.fim))}</span>`:""}<button class="btn small out" onclick="mFunEditarAuto(${i})">Alterar</button><button class="btn small red" onclick="funAutoTemp.splice(${i},1);mFunRenderAuto()">Excluir</button></div>`).join(""):"Nenhum evento automático."
 }
+let mFunMostrarInativos=false
 function mFunRenderPadrao(){
   const box=document.getElementById("mfPadLista"); if(!box)return
-  box.innerHTML=funEventoTemp.length?funEventoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.desc)}</b><span>${esc(a.valor||"")}</span>${a.obs?`<span>${esc(a.obs)}</span>`:""}<button class="btn small out" onclick="mFunEditarPadrao(${i})">Alterar</button><button class="btn small red" onclick="funEventoTemp.splice(${i},1);mFunRenderPadrao()">Excluir</button></div>`).join(""):"Nenhum evento padrão."
+  const hoje=new Date()
+  const compMes=comp() // ex: "2026-05"
+  function eventoInativo(a){
+    if(!a.fim)return false
+    // fim no formato AAAA-MM: inativo se fim < competência atual
+    return a.fim < compMes
+  }
+  const lista=mFunMostrarInativos ? funEventoTemp : funEventoTemp.filter(a=>!eventoInativo(a))
+  const temInativos=funEventoTemp.some(a=>eventoInativo(a))
+  // Checkbox mostrar inativos
+  const checkHtml=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+    <input type="checkbox" id="mfChkInativos" style="width:auto" ${mFunMostrarInativos?"checked":""} onchange="mFunMostrarInativos=this.checked;mFunRenderPadrao()">
+    <label for="mfChkInativos" style="margin:0;font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0">Mostrar eventos com data fim vencida${temInativos?" ("+funEventoTemp.filter(a=>eventoInativo(a)).length+" inativo(s))":""}</label>
+  </div>`
+  if(!lista.length){box.innerHTML=checkHtml+'<div style="color:var(--muted);font-size:13px">Nenhum evento padrão ativo.</div>';return}
+  box.innerHTML=checkHtml+lista.map((a)=>{
+    const i=funEventoTemp.indexOf(a)
+    const inativo=eventoInativo(a)
+    const estilo=inativo?"opacity:.5;background:#f8fafc;border-radius:8px;padding:4px 8px":"padding:4px 0"
+    const fimTxt=a.fim?` <span style="font-size:11px;color:${inativo?"var(--red)":"var(--muted)"}">Fim: ${esc(fmtMesRefLocal(a.fim))}</span>`:""
+    const iniTxt=a.inicio?` <span style="font-size:11px;color:var(--muted)">Início: ${esc(fmtMesRefLocal(a.inicio))}</span>`:""
+    return `<div class="action-line" style="${estilo}">
+      ${inativo?'<span class="badge red" style="font-size:10px;padding:2px 6px">Inativo</span>':''}
+      <b>${esc(a.desc)}</b>
+      <span>${esc(a.valor||"")}</span>
+      ${a.obs?`<span style="font-size:12px;color:var(--muted)">${esc(a.obs)}</span>`:""}
+      ${iniTxt}${fimTxt}
+      <button class="btn small out" onclick="mFunEditarPadrao(${i})">Alterar</button>
+      <button class="btn small red" onclick="mFunExcluirPadrao(${i})">Excluir</button>
+    </div>`
+  }).join("")
+}
+function mFunExcluirPadrao(i){
+  const a=funEventoTemp[i]; if(!a)return
+  const jaTemFim=!!a.fim
+  if(!jaTemFim){
+    // Sem data fim: avisar que o correto é colocar data fim
+    const resp=confirm(`⚠️ O correto para encerrar um evento padrão é informar uma DATA FIM, não excluir.\n\nIsso preserva o histórico e evita que o evento suma de meses já lançados.\n\nSe quiser inativar, clique em "Alterar" e preencha o campo "Fim".\n\nMesmo assim deseja EXCLUIR permanentemente o evento "${a.desc}"?`)
+    if(!resp)return
+  }else{
+    if(!confirm(`Excluir o evento "${a.desc}"? Esta ação não pode ser desfeita.`))return
+  }
+  funEventoTemp.splice(i,1)
+  funEventoEditIndex=null
+  mFunRenderPadrao()
 }
 function mFunAddAuto(){
   const ev=document.getElementById("mfAutoEvento")?.value
@@ -2243,7 +2288,7 @@ function mFunSalvar(){
   const empCod=document.getElementById("mfEmp")?.value
   const cod=(document.getElementById("mfCod")?.value||"").trim()
   if(!empCod||!cod)return alert("Informe empresa e código do funcionário.")
-  // Sincroniza campos do modal com os campos originais do form
+  // Sincroniza campos do modal → form original
   funEmpCad.value=empCod
   funCodCad.value=cod
   funNomeCad.value=document.getElementById("mfNome")?.value||""
@@ -2251,8 +2296,10 @@ function mFunSalvar(){
   funSalCad.value=document.getElementById("mfSal")?.value||""
   funStatusCad.value=document.getElementById("mfStatus")?.value||"Ativo"
   funObsCad.value=document.getElementById("mfObs")?.value||""
-  fecharModalFuncionario()
+  // FIX: fechar DEPOIS de salvar — fecharModalFuncionario limpa o form
   salvarFuncionarioCadastro()
+  document.getElementById("modalFuncionario")?.classList.remove("open")
+  document.body.classList.remove("modal-aberto")
 }
 
 function limparEventosSemCadastro(salvar=true){
