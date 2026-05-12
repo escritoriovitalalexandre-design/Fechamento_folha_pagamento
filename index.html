@@ -152,6 +152,10 @@ body.modal-aberto{overflow:hidden}
 /* campo nome largo nos modais */
 .me-nome-largo{grid-column:span 2}
 .mf-nome-largo{grid-column:span 2}
+/* Mini-modal edição evento padrão */
+.overlay-evpad{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:300;align-items:center;justify-content:center;padding:20px}
+.overlay-evpad.open{display:flex}
+.evpad-box{background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:24px}
 </style>
 </head>
 <body>
@@ -632,6 +636,33 @@ body.modal-aberto{overflow:hidden}
       <button class="btn red" onclick="fecharModalFuncionario()">✕ Fechar</button>
     </div>
     <div id="modalFuncionarioBody"></div>
+  </div>
+</div>
+
+<!-- MINI-MODAL EDIÇÃO EVENTO PADRÃO -->
+<div id="modalEvPad" class="overlay-evpad">
+  <div class="evpad-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;color:var(--pri);font-size:16px">✏️ Alterar evento padrão</h3>
+      <button class="btn red" style="padding:6px 10px;font-size:12px" onclick="fecharMiniModalEvPad()">✕</button>
+    </div>
+    <div id="modalEvPadAlerta" style="display:none;background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400e"></div>
+    <div style="margin-bottom:12px">
+      <label>Evento</label>
+      <input id="mepDesc" style="width:100%;margin-top:4px" readonly>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div><label>Valor/qtd</label><input id="mepValor" style="width:100%;margin-top:4px"></div>
+      <div><label>Observação</label><input id="mepObs" style="width:100%;margin-top:4px"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      <div><label>Início (mês/ano)</label><input id="mepInicio" type="month" style="width:100%;margin-top:4px"></div>
+      <div><label>Fim (mês/ano)</label><input id="mepFim" type="month" style="width:100%;margin-top:4px"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn pri" onclick="salvarMiniModalEvPad()">💾 Salvar alteração</button>
+      <button class="btn out" onclick="fecharMiniModalEvPad()">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -2286,11 +2317,45 @@ function mFunAddPadrao(){
 function mFunEditarPadrao(i){
   const a=funEventoTemp[i]; if(!a)return
   funEventoEditIndex=i
-  const ev=document.getElementById("mfPadEvento"); if(ev)ev.value=a.desc||""
-  const val=document.getElementById("mfPadValor"); if(val)val.value=a.valor||""
-  const obs=document.getElementById("mfPadObs"); if(obs)obs.value=a.obs||""
-  const ini=document.getElementById("mfPadInicio"); if(ini)ini.value=a.inicio||""
-  const fim=document.getElementById("mfPadFim"); if(fim)fim.value=a.fim||""
+  // Abrir mini-modal com os dados do evento
+  document.getElementById("mepDesc").value=a.desc||""
+  document.getElementById("mepValor").value=a.valor||""
+  document.getElementById("mepObs").value=a.obs||""
+  document.getElementById("mepInicio").value=a.inicio||""
+  document.getElementById("mepFim").value=a.fim||""
+  // Aviso se o evento não tem data fim
+  const alerta=document.getElementById("modalEvPadAlerta")
+  if(!a.fim){
+    alerta.style.display="block"
+    alerta.textContent="💡 Este evento não tem data fim — ficará ativo para sempre. Para encerrar no futuro, informe o campo Fim."
+  }else{
+    alerta.style.display="none"
+  }
+  document.getElementById("modalEvPad").classList.add("open")
+}
+function fecharMiniModalEvPad(){
+  document.getElementById("modalEvPad").classList.remove("open")
+  funEventoEditIndex=null
+}
+function salvarMiniModalEvPad(){
+  if(funEventoEditIndex===null)return
+  const a=funEventoTemp[funEventoEditIndex]
+  if(!a)return
+  const novoValor=document.getElementById("mepValor")?.value||""
+  const novoObs=document.getElementById("mepObs")?.value||""
+  const novoInicio=document.getElementById("mepInicio")?.value||""
+  const novoFim=document.getElementById("mepFim")?.value||""
+  // Aviso resumindo o que vai mudar
+  const mudancas=[]
+  if(novoValor!==a.valor)mudancas.push(`Valor: "${a.valor||"vazio"}" → "${novoValor||"vazio"}"`)
+  if(novoObs!==a.obs)mudancas.push(`Obs: "${a.obs||"vazio"}" → "${novoObs||"vazio"}"`)
+  if(novoInicio!==a.inicio)mudancas.push(`Início: "${fmtMesRefLocal(a.inicio)||"sem início"}" → "${fmtMesRefLocal(novoInicio)||"sem início"}"`)
+  if(novoFim!==a.fim)mudancas.push(`Fim: "${fmtMesRefLocal(a.fim)||"sem fim"}" → "${fmtMesRefLocal(novoFim)||"sem fim"}"`)
+  if(!mudancas.length){fecharMiniModalEvPad();return}
+  if(!confirm(`Salvar alterações no evento "${a.desc}"?\n\n${mudancas.join("\n")}`))return
+  funEventoTemp[funEventoEditIndex]={...a,valor:valorPadrao(novoValor),obs:novoObs,inicio:novoInicio,fim:novoFim}
+  fecharMiniModalEvPad()
+  mFunRenderPadrao()
 }
 function mFunSalvar(){
   const empCod=document.getElementById("mfEmp")?.value
