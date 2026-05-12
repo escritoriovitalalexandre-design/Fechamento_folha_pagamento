@@ -147,7 +147,7 @@ tr:hover td{background:#fbfdff}
 <label>URL do Projeto Supabase</label>
 <input id="setupUrl" placeholder="https://xxxxx.supabase.co">
 <label>Chave anon (anon public key)</label>
-<input id="setupKey" placeholder="eyJhbGciOiJIUzI1NiIs...">
+<textarea id="setupKey" placeholder="eyJhbGciOiJIUzI1NiIs..." rows="3" style="font-size:12px;word-break:break-all"></textarea>
 <button class="btn pri" onclick="salvarSetup()">Salvar e conectar</button>
 <div class="setup-status" id="setupStatus"></div>
 </div>
@@ -668,19 +668,26 @@ async function salvarSetup(){
   const key = document.getElementById("setupKey").value.trim();
   const st = document.getElementById("setupStatus");
   if(!url || !key){ st.className="setup-status err"; st.textContent="Preencha os dois campos."; return; }
+  if(key.length < 100){ st.className="setup-status err"; st.textContent="A chave anon parece incompleta. Cole a chave inteira."; return; }
   st.className="setup-status"; st.textContent="Testando conexão...";
   localStorage.setItem(SB_KEY_URL, url);
   localStorage.setItem(SB_KEY_ANON, key);
   try{
-    const r = await fetch(url + "/rest/v1/" + SB_TABLE + "?select=chave&limit=1", {headers: {"apikey": key, "Authorization": "Bearer "+key}});
-    if(!r.ok) throw new Error("HTTP " + r.status);
+    // Testa listando tabelas disponíveis (não depende de RLS)
+    const r = await fetch(url + "/rest/v1/", {headers: {"apikey": key, "Authorization": "Bearer "+key}});
+    if(r.status === 401) throw new Error("Chave anon inválida ou incompleta");
+    if(r.status === 404) throw new Error("URL do projeto incorreta");
+    // Tenta acessar a tabela
+    const r2 = await fetch(url + "/rest/v1/" + SB_TABLE + "?select=chave&limit=1", {headers: {"apikey": key, "Authorization": "Bearer "+key}});
+    if(r2.status === 401) throw new Error("RLS ativo. Rode no SQL Editor: ALTER TABLE dados_app DISABLE ROW LEVEL SECURITY;");
+    if(r2.status === 404) throw new Error("Tabela dados_app não encontrada. Rode o criar_tabelas.sql primeiro.");
     st.className="setup-status ok"; st.textContent="Conectado com sucesso!";
     setTimeout(()=>{
       document.getElementById("tela-setup").classList.remove("open");
       iniciarApp();
     }, 800);
   }catch(e){
-    st.className="setup-status err"; st.textContent="Erro: "+e.message+". Verifique a URL e a chave.";
+    st.className="setup-status err"; st.textContent="Erro: "+e.message;
     localStorage.removeItem(SB_KEY_URL);
     localStorage.removeItem(SB_KEY_ANON);
   }
