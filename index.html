@@ -1934,7 +1934,6 @@ function abrirModalEmpresa(e){
   <div class="emp-cod"><label>Código</label><input id="meCod" value="${esc(e.codigo)}"></div>
   <div class="emp-nome me-nome-largo"><label>Nome</label><input id="meNome" value="${esc(e.nome||"")}"></div>
   <div class="emp-small"><label>Tipo</label><select id="meTipo"><option value="">Selecione...</option><option${e.tipo==="MEI"?" selected":""}>MEI</option><option${e.tipo==="Doméstica"?" selected":""}>Doméstica</option><option${e.tipo==="Simples"?" selected":""}>Simples</option><option${e.tipo==="Lucro Presumido"?" selected":""}>Lucro Presumido</option><option${e.tipo==="Lucro Real"?" selected":""}>Lucro Real</option><option${e.tipo==="Outro"?" selected":""}>Outro</option></select></div>
-  <div class="emp-small"><label>Cliente</label><select id="meCliente"><option value="Ativo"${!empresaInativaCadastro(e)?" selected":""}>Ativo</option><option value="Inativo"${empresaInativaCadastro(e)?" selected":""}>Inativo</option></select></div>
 </div>
 <div class="row" style="margin-top:8px">
   <div class="emp-sind"><label>Sindicato</label><select id="meSind" onchange="mEmpAplicarSind()">${optsSind}</select></div>
@@ -1946,6 +1945,7 @@ function abrirModalEmpresa(e){
 <div class="row" style="margin-top:8px">
   <div class="emp-small"><label>Contribuição sindicato</label><select id="meContrib"><option value="OK"${(e.contribuicaoSindicatoStatus||"OK")==="OK"?" selected":""}>OK - quer contribuir</option><option value="NAO"${e.contribuicaoSindicatoStatus==="NAO"?" selected":""}>Não quer contribuir</option></select></div>
   <div class="emp-small"><label>Anotação sindicato</label><button type="button" id="meObsBtn" class="btn out obs-sind-btn" onclick="mEmpAnotacao()">${obsLabel}</button></div>
+  <div class="emp-small"><label>Cliente</label><select id="meCliente"><option value="Ativo"${!empresaInativaCadastro(e)?" selected":""}>Ativo</option><option value="Inativo"${empresaInativaCadastro(e)?" selected":""}>Inativo</option></select></div>
   <div class="emp-small"><label>&nbsp;</label><button class="btn pri" onclick="mEmpSalvar()">💾 Salvar empresa</button></div>
   <div class="emp-small"><label>&nbsp;</label><button class="btn out" onclick="fecharModalEmpresa()">Cancelar</button></div>
 </div>
@@ -2266,8 +2266,16 @@ function mFunAddPadrao(){
   const ev=document.getElementById("mfPadEvento")?.value
   if(!ev)return alert("Selecione o evento padrão.")
   const obj={desc:ev,valor:valorPadrao(document.getElementById("mfPadValor")?.value||""),obs:document.getElementById("mfPadObs")?.value||"",inicio:document.getElementById("mfPadInicio")?.value||"",fim:document.getElementById("mfPadFim")?.value||"",status:"Pendente"}
-  if(funEventoEditIndex!==null){funEventoTemp[funEventoEditIndex]=obj;funEventoEditIndex=null}
-  else{const idx=funEventoTemp.findIndex(a=>a.desc===ev); if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funEventoTemp[idx]=obj}else{if(!confirm("Cadastrar este evento padrão?"))return; funEventoTemp.push(obj)}}
+  // FIX: verificar modo edição ANTES de checar duplicata
+  if(funEventoEditIndex!==null){
+    if(!confirm("Salvar alteração deste evento padrão?"))return
+    funEventoTemp[funEventoEditIndex]=obj
+    funEventoEditIndex=null
+  }else{
+    const idx=funEventoTemp.findIndex(a=>a.desc===ev)
+    if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funEventoTemp[idx]=obj}
+    else{if(!confirm("Cadastrar este evento padrão?"))return; funEventoTemp.push(obj)}
+  }
   document.getElementById("mfPadEvento").value=""
   document.getElementById("mfPadValor").value=""
   document.getElementById("mfPadObs").value=""
