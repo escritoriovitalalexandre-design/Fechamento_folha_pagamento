@@ -144,6 +144,14 @@ tr:hover td{background:#fbfdff}
 .emp-modal-box{background:#fff;border-radius:18px;max-width:860px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.3);padding:24px;margin:auto;max-height:90vh;overflow-y:auto}
 .emp-modal-box h3{margin:0 0 16px;color:var(--pri);font-size:18px}
 body.modal-aberto{overflow:hidden}
+/* Modal funcionário v2.4b */
+.overlay-fun{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.overlay-fun.open{display:flex}
+.fun-modal-box{background:#fff;border-radius:18px;max-width:900px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.3);padding:24px;margin:auto;max-height:92vh;overflow-y:auto}
+.fun-modal-box h3{margin:0 0 16px;color:var(--pri);font-size:18px}
+/* campo nome largo nos modais */
+.me-nome-largo{grid-column:span 2}
+.mf-nome-largo{grid-column:span 2}
 </style>
 </head>
 <body>
@@ -613,6 +621,17 @@ body.modal-aberto{overflow:hidden}
       <button class="btn red" onclick="fecharModalEmpresa()">✕ Fechar</button>
     </div>
     <div id="modalEmpresaBody"></div>
+  </div>
+</div>
+
+<!-- MODAL EDIÇÃO FUNCIONÁRIO v2.4b — HTML próprio -->
+<div id="modalFuncionario" class="overlay-fun" onclick="if(event.target===this)fecharModalFuncionario()">
+  <div class="fun-modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>👤 Editar funcionário</h3>
+      <button class="btn red" onclick="fecharModalFuncionario()">✕ Fechar</button>
+    </div>
+    <div id="modalFuncionarioBody"></div>
   </div>
 </div>
 
@@ -1913,7 +1932,7 @@ function abrirModalEmpresa(e){
   body.innerHTML=`
 <div class="row">
   <div class="emp-cod"><label>Código</label><input id="meCod" value="${esc(e.codigo)}"></div>
-  <div class="emp-nome"><label>Nome</label><input id="meNome" value="${esc(e.nome||"")}"></div>
+  <div class="emp-nome me-nome-largo"><label>Nome</label><input id="meNome" value="${esc(e.nome||"")}"></div>
   <div class="emp-small"><label>Tipo</label><select id="meTipo"><option value="">Selecione...</option><option${e.tipo==="MEI"?" selected":""}>MEI</option><option${e.tipo==="Doméstica"?" selected":""}>Doméstica</option><option${e.tipo==="Simples"?" selected":""}>Simples</option><option${e.tipo==="Lucro Presumido"?" selected":""}>Lucro Presumido</option><option${e.tipo==="Lucro Real"?" selected":""}>Lucro Real</option><option${e.tipo==="Outro"?" selected":""}>Outro</option></select></div>
   <div class="emp-small"><label>Cliente</label><select id="meCliente"><option value="Ativo"${!empresaInativaCadastro(e)?" selected":""}>Ativo</option><option value="Inativo"${empresaInativaCadastro(e)?" selected":""}>Inativo</option></select></div>
 </div>
@@ -2086,7 +2105,10 @@ function salvarFuncionarioCadastro(){
   saved()
 }
 function carregarFuncionarioCadastro(empCod,funCod){
-  const emp=state.empresas.find(e=>e.codigo===empCod); const f=emp?.funcionarios.find(x=>x.codigo===funCod); if(!f)return
+  const emp=state.empresas.find(e=>e.codigo===empCod)
+  const f=emp?.funcionarios.find(x=>x.codigo===funCod)
+  if(!f)return
+  // Preenche os campos originais (usados por salvarFuncionarioCadastro)
   funEmpCad.value=empCod; funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
   funAutoTemp=clone(f.autoEventos||[]).map(a=>({...a,inicio:a.inicio||"",fim:a.fim||""}))
   funEventoTemp=clone(f.eventos||[])
@@ -2095,7 +2117,142 @@ function carregarFuncionarioCadastro(empCod,funCod){
   funcionarioEditando={empCod,funCod}
   if(typeof funcionarioFormModo!=="undefined")funcionarioFormModo.textContent="Editando funcionário"
   if(typeof funcionarioFormCard!=="undefined")funcionarioFormCard.classList.add("editing")
-  show("funcionarios"); window.scrollTo({top:0,behavior:"smooth"})
+  // FIX v2.4b: abre modal em vez de rolar para o form
+  abrirModalFuncionario(emp,f)
+}
+function abrirModalFuncionario(emp,f){
+  const modal=document.getElementById("modalFuncionario")
+  const body=document.getElementById("modalFuncionarioBody")
+  if(!modal||!body)return
+  // Opções de evento automático
+  const optsAuto='<option value="">Sem automático</option>'+state.eventos.map(ev=>{const v=labelEventoObj(ev);return`<option value="${esc(v)}">${esc(v)}</option>`}).join("")
+  // Opções de evento padrão (filtrado pela empresa)
+  const evEmp=eventosEmpresa(emp.codigo)
+  const optsPad='<option value="">Selecione...</option>'+evEmp.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("")
+  // Opções de empresa
+  const optsEmp=state.empresas.map(e=>`<option value="${esc(e.codigo)}"${e.codigo===emp.codigo?" selected":""}>${esc(e.codigo)} - ${esc(e.nome)}</option>`).join("")
+  // Status
+  const statusOpts=["Ativo","Admitido","Rescisão","Férias","Afastado","Licença maternidade"].map(s=>`<option${s===(f.statusDetectado||"Ativo")?" selected":""}>${s}</option>`).join("")
+  body.innerHTML=`
+<div class="row" style="grid-template-columns:1fr 80px 1fr 140px;gap:10px">
+  <div><label>Empresa</label><select id="mfEmp" onchange="mFunAtualizarEventos()">${optsEmp}</select></div>
+  <div><label>Código</label><input id="mfCod" value="${esc(f.codigo)}"></div>
+  <div class="mf-nome-largo"><label>Nome</label><input id="mfNome" value="${esc(f.nome||"")}"></div>
+</div>
+<div class="row" style="grid-template-columns:1fr 140px 120px;gap:10px;margin-top:8px">
+  <div><label>Função</label><input id="mfFuncao" value="${esc(f.funcao||"")}"></div>
+  <div><label>Salário</label><input id="mfSal" value="${esc(f.salario||"")}" onblur="this.value=formatMoneyInput(this.value)"></div>
+  <div><label>Status</label><select id="mfStatus">${statusOpts}</select></div>
+</div>
+<div style="margin-top:8px"><label>Observações</label><input id="mfObs" value="${esc((f.observacoes||[]).join(" | "))}" placeholder="Observações fixas do funcionário"></div>
+<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:14px">
+  <b style="color:var(--pri);font-size:14px">⚡ Eventos automáticos (por dia útil)</b>
+  <div class="row" style="grid-template-columns:1fr 90px 100px 100px auto;gap:8px;margin-top:8px;align-items:end">
+    <div><label>Evento</label><select id="mfAutoEvento">${optsAuto}</select></div>
+    <div><label>Qtd/dia</label><input id="mfAutoQtd" placeholder="1:00"></div>
+    <div><label>Início</label><input id="mfAutoInicio" type="month"></div>
+    <div><label>Fim</label><input id="mfAutoFim" type="month"></div>
+    <div><label>&nbsp;</label><button class="btn out" onclick="mFunAddAuto()">+ Adicionar</button></div>
+  </div>
+  <div class="auto-list" id="mfAutoLista" style="margin-top:8px">Nenhum evento automático.</div>
+</div>
+<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:14px">
+  <b style="color:var(--pri);font-size:14px">📋 Eventos padrão fixos</b>
+  <div class="row" style="grid-template-columns:1fr 120px 1fr 100px 100px auto;gap:8px;margin-top:8px;align-items:end">
+    <div><label>Evento</label><select id="mfPadEvento">${optsPad}</select></div>
+    <div><label>Valor/qtd</label><input id="mfPadValor" placeholder="150,00"></div>
+    <div><label>Observação</label><input id="mfPadObs" placeholder=""></div>
+    <div><label>Início</label><input id="mfPadInicio" type="month"></div>
+    <div><label>Fim</label><input id="mfPadFim" type="month"></div>
+    <div><label>&nbsp;</label><button class="btn out" onclick="mFunAddPadrao()">+ Adicionar</button></div>
+  </div>
+  <div class="auto-list" id="mfPadLista" style="margin-top:8px">Nenhum evento padrão.</div>
+</div>
+<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+  <button class="btn pri" onclick="mFunSalvar()">💾 Salvar funcionário</button>
+  <button class="btn out" onclick="fecharModalFuncionario()">Cancelar</button>
+</div>`
+  mFunRenderAuto()
+  mFunRenderPadrao()
+  modal.classList.add("open")
+  document.body.classList.add("modal-aberto")
+}
+function fecharModalFuncionario(){
+  document.getElementById("modalFuncionario")?.classList.remove("open")
+  document.body.classList.remove("modal-aberto")
+  limparFuncionarioForm()
+}
+function mFunAtualizarEventos(){
+  const codEmp=document.getElementById("mfEmp")?.value
+  const evEmp=eventosEmpresa(codEmp)
+  const sel=document.getElementById("mfPadEvento")
+  if(sel)sel.innerHTML='<option value="">Selecione...</option>'+evEmp.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("")
+}
+function mFunRenderAuto(){
+  const box=document.getElementById("mfAutoLista"); if(!box)return
+  box.innerHTML=funAutoTemp.length?funAutoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.evento)}</b><span>${esc(a.qtd)} por dia útil</span>${a.inicio?`<span>Início: ${esc(fmtMesRefLocal(a.inicio))}</span>`:""} ${a.fim?`<span>Fim: ${esc(fmtMesRefLocal(a.fim))}</span>`:""}<button class="btn small out" onclick="mFunEditarAuto(${i})">Alterar</button><button class="btn small red" onclick="funAutoTemp.splice(${i},1);mFunRenderAuto()">Excluir</button></div>`).join(""):"Nenhum evento automático."
+}
+function mFunRenderPadrao(){
+  const box=document.getElementById("mfPadLista"); if(!box)return
+  box.innerHTML=funEventoTemp.length?funEventoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.desc)}</b><span>${esc(a.valor||"")}</span>${a.obs?`<span>${esc(a.obs)}</span>`:""}<button class="btn small out" onclick="mFunEditarPadrao(${i})">Alterar</button><button class="btn small red" onclick="funEventoTemp.splice(${i},1);mFunRenderPadrao()">Excluir</button></div>`).join(""):"Nenhum evento padrão."
+}
+function mFunAddAuto(){
+  const ev=document.getElementById("mfAutoEvento")?.value
+  const qtd=document.getElementById("mfAutoQtd")?.value
+  if(!ev||!qtd)return alert("Informe evento e quantidade.")
+  const obj={evento:ev,qtd,inicio:document.getElementById("mfAutoInicio")?.value||"",fim:document.getElementById("mfAutoFim")?.value||""}
+  if(funAutoEditIndex!==null){funAutoTemp[funAutoEditIndex]=obj;funAutoEditIndex=null}
+  else{const idx=funAutoTemp.findIndex(a=>a.evento===ev); if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funAutoTemp[idx]=obj}else{if(!confirm("Cadastrar este evento automático?"))return; funAutoTemp.push(obj)}}
+  document.getElementById("mfAutoEvento").value=""
+  document.getElementById("mfAutoQtd").value=""
+  document.getElementById("mfAutoInicio").value=""
+  document.getElementById("mfAutoFim").value=""
+  mFunRenderAuto()
+}
+function mFunEditarAuto(i){
+  const a=funAutoTemp[i]; if(!a)return
+  funAutoEditIndex=i
+  const ev=document.getElementById("mfAutoEvento"); if(ev)ev.value=a.evento||""
+  const qtd=document.getElementById("mfAutoQtd"); if(qtd)qtd.value=a.qtd||""
+  const ini=document.getElementById("mfAutoInicio"); if(ini)ini.value=a.inicio||""
+  const fim=document.getElementById("mfAutoFim"); if(fim)fim.value=a.fim||""
+}
+function mFunAddPadrao(){
+  const ev=document.getElementById("mfPadEvento")?.value
+  if(!ev)return alert("Selecione o evento padrão.")
+  const obj={desc:ev,valor:valorPadrao(document.getElementById("mfPadValor")?.value||""),obs:document.getElementById("mfPadObs")?.value||"",inicio:document.getElementById("mfPadInicio")?.value||"",fim:document.getElementById("mfPadFim")?.value||"",status:"Pendente"}
+  if(funEventoEditIndex!==null){funEventoTemp[funEventoEditIndex]=obj;funEventoEditIndex=null}
+  else{const idx=funEventoTemp.findIndex(a=>a.desc===ev); if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funEventoTemp[idx]=obj}else{if(!confirm("Cadastrar este evento padrão?"))return; funEventoTemp.push(obj)}}
+  document.getElementById("mfPadEvento").value=""
+  document.getElementById("mfPadValor").value=""
+  document.getElementById("mfPadObs").value=""
+  document.getElementById("mfPadInicio").value=""
+  document.getElementById("mfPadFim").value=""
+  mFunRenderPadrao()
+}
+function mFunEditarPadrao(i){
+  const a=funEventoTemp[i]; if(!a)return
+  funEventoEditIndex=i
+  const ev=document.getElementById("mfPadEvento"); if(ev)ev.value=a.desc||""
+  const val=document.getElementById("mfPadValor"); if(val)val.value=a.valor||""
+  const obs=document.getElementById("mfPadObs"); if(obs)obs.value=a.obs||""
+  const ini=document.getElementById("mfPadInicio"); if(ini)ini.value=a.inicio||""
+  const fim=document.getElementById("mfPadFim"); if(fim)fim.value=a.fim||""
+}
+function mFunSalvar(){
+  const empCod=document.getElementById("mfEmp")?.value
+  const cod=(document.getElementById("mfCod")?.value||"").trim()
+  if(!empCod||!cod)return alert("Informe empresa e código do funcionário.")
+  // Sincroniza campos do modal com os campos originais do form
+  funEmpCad.value=empCod
+  funCodCad.value=cod
+  funNomeCad.value=document.getElementById("mfNome")?.value||""
+  funFuncaoCad.value=document.getElementById("mfFuncao")?.value||""
+  funSalCad.value=document.getElementById("mfSal")?.value||""
+  funStatusCad.value=document.getElementById("mfStatus")?.value||"Ativo"
+  funObsCad.value=document.getElementById("mfObs")?.value||""
+  fecharModalFuncionario()
+  salvarFuncionarioCadastro()
 }
 
 function limparEventosSemCadastro(salvar=true){
