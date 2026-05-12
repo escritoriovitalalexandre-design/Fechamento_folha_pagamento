@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  crossorigin="anonymous"></script>
 <title>Controle de Fechamento da Folha — v67 | 2026-05-10 | Logo + Painel de Mensagem</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
@@ -601,20 +603,12 @@ const SB_KEY_ANON = "folha_sb_anon";
 const SB_TABLE = "dados_app";
 const SB_CHAVE_STATE = "folha_state";
 const SB_CHAVE_PAINEL = "folha_painelMsg";
+let sbClient = null;
 
 function getSBConfig(){
   const url = localStorage.getItem(SB_KEY_URL);
   const anon = localStorage.getItem(SB_KEY_ANON);
   return (url && anon) ? {url, anon} : null;
-}
-function sbHeaders(){
-  const cfg = getSBConfig();
-  if(!cfg) return {};
-  return {"apikey": cfg.anon, "Authorization": "Bearer "+cfg.anon, "Content-Type": "application/json", "Prefer": "return=representation"};
-}
-function sbUrl(chave){
-  const cfg = getSBConfig();
-  return cfg.url + "/rest/v1/" + SB_TABLE + "?chave=eq." + encodeURIComponent(chave);
 }
 
 function showSync(tipo, msg){
@@ -626,35 +620,20 @@ function showSync(tipo, msg){
 }
 
 async function sbGet(chave){
-  const cfg = getSBConfig();
-  if(!cfg) return null;
+  if(!sbClient) return null;
   try{
-    const r = await fetch(sbUrl(chave) + "&select=dados", {headers: sbHeaders()});
-    if(!r.ok) return null;
-    const arr = await r.json();
-    return (arr && arr.length > 0) ? arr[0].dados : null;
+    const {data, error} = await sbClient.from(SB_TABLE).select("dados").eq("chave", chave).single();
+    if(error && error.code !== "PGRST116") return null; // PGRST116 = not found
+    return data?.dados || null;
   }catch(e){ return null; }
 }
 
 async function sbSet(chave, dados){
-  const cfg = getSBConfig();
-  if(!cfg) return;
-  const body = JSON.stringify({chave, dados});
+  if(!sbClient) return;
   try{
     showSync("saving", "Salvando...");
-    // Tenta PATCH (update)
-    const r = await fetch(sbUrl(chave), {method: "PATCH", headers: sbHeaders(), body: JSON.stringify({dados})});
-    if(r.status === 200 || r.status === 204){
-      const arr = await r.json().catch(()=>[]);
-      if(Array.isArray(arr) && arr.length === 0){
-        // Não existe, faz POST (insert)
-        await fetch(cfg.url + "/rest/v1/" + SB_TABLE, {method: "POST", headers: sbHeaders(), body});
-      }
-      showSync("saved", "Salvo ✓");
-      return;
-    }
-    // Se PATCH retornou 404 ou array vazio, tenta POST
-    await fetch(cfg.url + "/rest/v1/" + SB_TABLE, {method: "POST", headers: sbHeaders(), body});
+    const {error} = await sbClient.from(SB_TABLE).upsert({chave, dados}, {onConflict: "chave"});
+    if(error) throw error;
     showSync("saved", "Salvo ✓");
   }catch(e){
     showSync("error", "Erro ao salvar");
@@ -663,34 +642,20 @@ async function sbSet(chave, dados){
 }
 
 // ========== SETUP ==========
-async function salvarSetup(){
+function salvarSetup(){
   const url = document.getElementById("setupUrl").value.trim().replace(/\/+$/, "");
-  const key = document.getElementById("setupKey").value.trim();
+  const key = document.getElementById("setupKey").value.trim().replace(/[\s\n\r]+/g, "");
   const st = document.getElementById("setupStatus");
   if(!url || !key){ st.className="setup-status err"; st.textContent="Preencha os dois campos."; return; }
-  if(key.length < 100){ st.className="setup-status err"; st.textContent="A chave anon parece incompleta. Cole a chave inteira."; return; }
-  st.className="setup-status"; st.textContent="Testando conexão...";
+  if(!url.includes("supabase.co")){ st.className="setup-status err"; st.textContent="URL inválida. Deve conter supabase.co"; return; }
+  if(!key.startsWith("eyJ")){ st.className="setup-status err"; st.textContent="Chave inválida. Deve começar com eyJ..."; return; }
   localStorage.setItem(SB_KEY_URL, url);
   localStorage.setItem(SB_KEY_ANON, key);
-  try{
-    // Testa listando tabelas disponíveis (não depende de RLS)
-    const r = await fetch(url + "/rest/v1/", {headers: {"apikey": key, "Authorization": "Bearer "+key}});
-    if(r.status === 401) throw new Error("Chave anon inválida ou incompleta");
-    if(r.status === 404) throw new Error("URL do projeto incorreta");
-    // Tenta acessar a tabela
-    const r2 = await fetch(url + "/rest/v1/" + SB_TABLE + "?select=chave&limit=1", {headers: {"apikey": key, "Authorization": "Bearer "+key}});
-    if(r2.status === 401) throw new Error("RLS ativo. Rode no SQL Editor: ALTER TABLE dados_app DISABLE ROW LEVEL SECURITY;");
-    if(r2.status === 404) throw new Error("Tabela dados_app não encontrada. Rode o criar_tabelas.sql primeiro.");
-    st.className="setup-status ok"; st.textContent="Conectado com sucesso!";
-    setTimeout(()=>{
-      document.getElementById("tela-setup").classList.remove("open");
-      iniciarApp();
-    }, 800);
-  }catch(e){
-    st.className="setup-status err"; st.textContent="Erro: "+e.message;
-    localStorage.removeItem(SB_KEY_URL);
-    localStorage.removeItem(SB_KEY_ANON);
-  }
+  st.className="setup-status ok"; st.textContent="Credenciais salvas! Iniciando...";
+  setTimeout(()=>{
+    document.getElementById("tela-setup").classList.remove("open");
+    iniciarApp();
+  }, 800);
 }
 
 // ========== LOAD / SAVE ==========
@@ -1147,7 +1112,6 @@ function popularEventosEmpresaSelectFormCad(){
   sel.innerHTML='<option value="">Selecionar evento...</option>'+state.eventos.filter(e=>!vinculadosSet.has(labelEventoObj(e))).map(e=>{const v=labelEventoObj(e);return `<option value="${esc(v)}">${esc(v)}</option>`}).join("")
 }
 function init(){
-  // Verifica se tem configuração do Supabase
   const cfg = getSBConfig();
   if(!cfg){
     document.getElementById("tela-setup").classList.add("open");
@@ -1157,6 +1121,10 @@ function init(){
 }
 
 async function iniciarApp(){
+  const cfg = getSBConfig();
+  if(cfg && window.supabase){
+    sbClient = window.supabase.createClient(cfg.url, cfg.anon);
+  }
   // Carrega do Supabase
   state = await loadFromSupabase();
   // Limpa eventos sem cadastro
