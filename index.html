@@ -288,9 +288,9 @@ body.modal-aberto{overflow:hidden}
     </div>
     <p class="muted" style="margin-top:6px;font-size:12px">Eventos vinculados aqui ficam disponíveis para lançamento manual no fechamento desta empresa. Não aparecem automaticamente — só quando você clicar em "+ Evento" no fechamento do funcionário.</p>
   </div>
-  <div style="margin:12px 0;display:flex;gap:8px;align-items:center">
-    <input id="mostrarTodosClientesEmpresas" type="checkbox" style="width:auto" onchange="renderAll()">
-    <label for="mostrarTodosClientesEmpresas" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar todos os clientes, inclusive inativos e sem funcionários</label>
+  <div style="margin:12px 0;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <span style="display:flex;gap:8px;align-items:center"><input id="mostrarTodosClientesEmpresas" type="checkbox" style="width:auto" onchange="renderAll()"><label for="mostrarTodosClientesEmpresas" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar todos os clientes, inclusive inativos e sem funcionários</label></span>
+    <span style="display:flex;gap:8px;align-items:center"><input id="mostrarEmpresasExcluidas" type="checkbox" style="width:auto" onchange="renderAll()"><label for="mostrarEmpresasExcluidas" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar empresas excluídas</label></span>
   </div>
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn blue" onclick="novaEmpresaCadastro()">+ Nova Empresa</button>
@@ -389,9 +389,11 @@ body.modal-aberto{overflow:hidden}
   <div class="row"><div><label>Filtrar empresa</label><select id="funEmpFiltro" onchange="renderFun()"></select></div><div><label>Busca</label><input id="funBusca" placeholder="Buscar funcionário..." oninput="renderFun()"></div></div>
   <div style="margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <span style="display:flex;gap:8px;align-items:center"><input id="mostrarEmpresasInativasFuncionario" type="checkbox" style="width:auto" onchange="renderFun()"><label for="mostrarEmpresasInativasFuncionario" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar empresas inativas</label></span>
+    <span style="display:flex;gap:8px;align-items:center"><input id="mostrarEmpresasExcluidasFuncionario" type="checkbox" style="width:auto" onchange="renderFun()"><label for="mostrarEmpresasExcluidasFuncionario" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar empresas excluídas</label></span>
     <span style="display:flex;gap:8px;align-items:center"><input id="mostrarFuncionariosInativos" type="checkbox" style="width:auto" onchange="renderFun()"><label for="mostrarFuncionariosInativos" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar funcionários inativos</label></span>
+    <span style="display:flex;gap:8px;align-items:center"><input id="mostrarFuncionariosExcluidos" type="checkbox" style="width:auto" onchange="renderFun()"><label for="mostrarFuncionariosExcluidos" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar funcionários excluídos</label></span>
   </div>
-  <p class="muted" style="margin-top:6px">Empresas e funcionários inativos ficam ocultos para evitar lançamento por engano. Marque as opções acima apenas quando precisar consultar/editar histórico.</p>
+  <p class="muted" style="margin-top:6px">Empresas e funcionários inativos/excluídos ficam ocultos para evitar lançamento por engano. Marque as opções acima apenas quando precisar consultar/editar histórico.</p>
   <div class="table-wrap"><table id="tabFun"></table></div>
 </div>
 </section>
@@ -1317,7 +1319,8 @@ function funcionarioInativoNaCompetencia(fun,c){
 }
 function funcionarioExcluidoNaCompetencia(fun,c){
   const inicioExclusao=String(fun?.excluidoApartir||"").trim()
-  return !!(inicioExclusao && (!c || c>=inicioExclusao))
+  const inicioRestauracao=String(fun?.restauradoApartir||"").trim()
+  return !!(inicioExclusao && (!c || c>=inicioExclusao) && (!inicioRestauracao || (c && c<inicioRestauracao)))
 }
 function funcionarioAtivoNaCompetencia(fun,c){
   if(!fun)return false
@@ -1325,9 +1328,9 @@ function funcionarioAtivoNaCompetencia(fun,c){
   if(funcionarioInativoNaCompetencia(fun,c))return false
   return true
 }
-function funcionarioVisivelCadastro(fun,c,mostrarInativos){
+function funcionarioVisivelCadastro(fun,c,mostrarInativos,mostrarExcluidos){
   if(!fun)return false
-  if(funcionarioExcluidoNaCompetencia(fun,c))return false
+  if(funcionarioExcluidoNaCompetencia(fun,c))return !!mostrarExcluidos
   if(funcionarioAtivoNaCompetencia(fun,c))return true
   return !!mostrarInativos && funcionarioInativoNaCompetencia(fun,c)
 }
@@ -1379,7 +1382,8 @@ function empresaInativaNaCompetencia(e,c){
 }
 function empresaExcluidaNaCompetencia(e,c){
   const inicioExclusao=String(e?.excluidoApartir||"").trim()
-  return !!(inicioExclusao && (!c || c>=inicioExclusao))
+  const inicioRestauracao=String(e?.restauradoApartir||"").trim()
+  return !!(inicioExclusao && (!c || c>=inicioExclusao) && (!inicioRestauracao || (c && c<inicioRestauracao)))
 }
 function empresaAtivaNaCompetencia(e,c){
   if(!e)return false
@@ -1421,18 +1425,28 @@ function aplicarStatusEmpresaInativa(emp,novoStatus){
 function empresasAtivas(){const c=comp(); return state.empresas.filter(e=>empresaAtivaNaCompetencia(e,c)&&(e.funcionarios||[]).some(f=>funcionarioAtivoNaCompetencia(f,c)))}
 function empresasCadastroVisiveis(){
   // TRAVADO: na aba Empresas/Códigos, empresa nova ativa deve aparecer mesmo sem funcionário.
-  // Inativas só aparecem quando marcado; excluídas seguem preservadas apenas antes da competência de exclusão.
+  // Inativas/excluídas só aparecem quando marcado; competências anteriores continuam preservadas.
   const c=comp()
   const mostrarTodos=!!document.getElementById("mostrarTodosClientesEmpresas")?.checked
-  const base=state.empresas.filter(e=>!empresaExcluidaNaCompetencia(e,c)&&(mostrarTodos||!empresaInativaNaCompetencia(e,c)))
+  const mostrarExcluidas=!!document.getElementById("mostrarEmpresasExcluidas")?.checked
+  const base=state.empresas.filter(e=>{
+    if(empresaExcluidaNaCompetencia(e,c))return mostrarExcluidas
+    if(empresaInativaNaCompetencia(e,c))return mostrarTodos
+    return true
+  })
   return [...base].sort((a,b)=>Number(a.codigo)-Number(b.codigo)||String(a.nome||"").localeCompare(String(b.nome||"")))
 }
 function empresasFuncionarioVisiveis(){
   // TRAVADO: para cadastrar funcionário, listar empresas ativas mesmo sem funcionário.
-  // Empresas inativas só entram se o usuário marcar o checkbox próprio desta aba.
+  // Empresas inativas/excluídas só entram se o usuário marcar o checkbox próprio desta aba.
   const c=comp()
   const mostrarInativas=!!document.getElementById("mostrarEmpresasInativasFuncionario")?.checked
-  return state.empresas.filter(e=>!empresaExcluidaNaCompetencia(e,c)&&(mostrarInativas||!empresaInativaNaCompetencia(e,c))).sort((a,b)=>Number(a.codigo)-Number(b.codigo)||String(a.nome||"").localeCompare(String(b.nome||"")))
+  const mostrarExcluidas=!!document.getElementById("mostrarEmpresasExcluidasFuncionario")?.checked
+  return state.empresas.filter(e=>{
+    if(empresaExcluidaNaCompetencia(e,c))return mostrarExcluidas
+    if(empresaInativaNaCompetencia(e,c))return mostrarInativas
+    return true
+  }).sort((a,b)=>Number(a.codigo)-Number(b.codigo)||String(a.nome||"").localeCompare(String(b.nome||"")))
 }
 function popularEmpresas(){
   const opts=['<option value="">Todas as empresas</option>'].concat(empresasAtivas().map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`)).join("")
@@ -1932,11 +1946,24 @@ function renderRel(){
 function renderEmp(){
   // (TRAVADO) Cadastro Empresas/Códigos: usar lista própria para permitir exibir todos os clientes sem mexer no fechamento mensal.
   const busca=(document.getElementById("empBuscaLista")?.value||"").toLowerCase().trim()
+  const competenciaAtual=comp()
   const lista=empresasCadastroVisiveis().filter(e=>{
     if(!busca)return true
     return [e.codigo,e.nome,e.cnpj||""].join(" ").toLowerCase().includes(busca)
   })
-  tabEmp.innerHTML="<thead><tr><th>Cód.</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Sindicato</th><th>Vínculo</th><th>Data-base</th><th>Status data-base</th><th>Dissídio/Obs.</th><th>Códigos</th><th>Ação</th></tr></thead><tbody>"+lista.map((e)=>`<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${empresaInativaNaCompetencia(e,comp())?"red":"ok"}">${empresaInativaNaCompetencia(e,comp())?"Inativo"+(e.inativoApartir?" desde "+fmtMesAnoCurto(e.inativoApartir):""):"Ativo"}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="alert('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><div class="action-line"><button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${String(e.codigo).replaceAll("'","\\'")}')">Editar</button><button class="btn small red" onclick="excluirEmpresaCadastro('${String(e.codigo).replaceAll("'","\\'")}')">Excluir</button></div></td></tr>`).join("")+"</tbody>"
+  tabEmp.innerHTML="<thead><tr><th>Cód.</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Sindicato</th><th>Vínculo</th><th>Data-base</th><th>Status data-base</th><th>Dissídio/Obs.</th><th>Códigos</th><th>Ação</th></tr></thead><tbody>"+lista.map((e)=>{
+    const excluidaAgora=empresaExcluidaNaCompetencia(e,competenciaAtual)
+    const inativaAgora=empresaInativaNaCompetencia(e,competenciaAtual)
+    const statusCliente=excluidaAgora
+      ? `Excluída${e.excluidoApartir?" desde "+fmtMesAnoCurto(e.excluidoApartir):""}${e.restauradoApartir?" até "+fmtMesAnoCurto(e.restauradoApartir):""}`
+      : (inativaAgora?`Inativo${e.inativoApartir?" desde "+fmtMesAnoCurto(e.inativoApartir):""}`:"Ativo")
+    const statusClass=excluidaAgora||inativaAgora?"red":"ok"
+    const codSafe=String(e.codigo).replaceAll("'","\\'")
+    const botoes=excluidaAgora
+      ? `<button class="btn small green" onclick="restaurarEmpresaCadastro('${codSafe}')">Restaurar</button><button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${codSafe}')">Editar</button>`
+      : `<button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${codSafe}')">Editar</button><button class="btn small red" onclick="excluirEmpresaCadastro('${codSafe}')">Excluir</button>`
+    return `<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${statusClass}">${esc(statusCliente)}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="alert('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><div class="action-line">${botoes}</div></td></tr>`
+  }).join("")+"</tbody>"
 }
 function removerEmpresaDosFechamentos(empCod,competenciaInicio){
   Object.keys(state.fechamentos||{}).forEach(c=>{
@@ -1967,8 +1994,29 @@ Funcionários cadastrados nesta empresa: ${qtdFunc}.`,sugerida)
 O sistema vai remover dos fechamentos de ${inicio} em diante.
 Competências anteriores não serão alteradas.`))return
   emp.excluidoApartir=inicio
+  delete emp.restauradoApartir
   removerEmpresaDosFechamentos(emp.codigo,inicio)
   if(empresaEditando&&String(empresaEditando)===String(emp.codigo))limparEmpresaForm()
+  saved()
+}
+
+function restaurarEmpresaCadastro(codEmp){
+  const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
+  if(!emp)return alert("Empresa não localizada.")
+  if(!String(emp.excluidoApartir||"").trim())return alert("Esta empresa não está marcada como excluída.")
+  const sugerida=comp()||SEED.competenciaBase
+  let inicio=prompt(`A partir de qual competência deseja RESTAURAR a empresa ${emp.codigo} - ${emp.nome}?
+
+Informe no formato AAAA-MM.
+Exemplo: ${sugerida}
+
+Ela voltará a aparecer da competência informada em diante.
+As competências anteriores continuarão preservadas.`,sugerida)
+  if(inicio===null)return
+  inicio=String(inicio).trim()
+  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!confirm(`Confirmar restauração da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?`))return
+  emp.restauradoApartir=inicio
   saved()
 }
 function popularFunSelects(){
@@ -1984,8 +2032,23 @@ function renderFun(){
   const b=(document.getElementById("funBusca")?.value||"").toLowerCase()
   const competenciaAtual=comp()
   const mostrarFuncInativos=!!document.getElementById("mostrarFuncionariosInativos")?.checked
-  let rows=[]; empresasFuncionarioVisiveis().forEach(e=>{if(empF&&String(e.codigo)!==String(empF))return; (e.funcionarios||[]).forEach(f=>{if(!funcionarioVisivelCadastro(f,competenciaAtual,mostrarFuncInativos))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao,f.statusDetectado,(f.observacoes||[]).join(" ")].join(" ").toLowerCase(); if(b&&!txt.includes(b))return; rows.push({e,f})})})
-  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>`<tr><td>${esc(x.e.nome)}${empresaInativaNaCompetencia(x.e,competenciaAtual)?' <span class="badge red">Inativa '+esc(fmtMesAnoCurto(x.e.inativoApartir||''))+'</span>':''}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}${funcionarioInativoNaCompetencia(x.f,competenciaAtual)?' <span class="badge red">Inativo '+esc(fmtMesAnoCurto(x.f.inativoApartir||''))+'</span>':''}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${x.f.excluidoApartir?'<span class="badge red">Exclui a partir de '+esc(x.f.excluidoApartir)+'</span>':'-'}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line"><button class="btn small out" onclick="carregarFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Editar</button><button class="btn small red" onclick="excluirFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Excluir</button></div></td></tr>`).join("")+"</tbody>"
+  const mostrarFuncExcluidos=!!document.getElementById("mostrarFuncionariosExcluidos")?.checked
+  let rows=[]; empresasFuncionarioVisiveis().forEach(e=>{if(empF&&String(e.codigo)!==String(empF))return; (e.funcionarios||[]).forEach(f=>{if(!funcionarioVisivelCadastro(f,competenciaAtual,mostrarFuncInativos,mostrarFuncExcluidos))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao,f.statusDetectado,(f.observacoes||[]).join(" ")].join(" ").toLowerCase(); if(b&&!txt.includes(b))return; rows.push({e,f})})})
+  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>{
+    const empInativa=empresaInativaNaCompetencia(x.e,competenciaAtual)
+    const empExcluida=empresaExcluidaNaCompetencia(x.e,competenciaAtual)
+    const funInativo=funcionarioInativoNaCompetencia(x.f,competenciaAtual)
+    const funExcluido=funcionarioExcluidoNaCompetencia(x.f,competenciaAtual)
+    const empBadge=empExcluida?' <span class="badge red">Empresa excluída '+esc(fmtMesAnoCurto(x.e.excluidoApartir||''))+'</span>':(empInativa?' <span class="badge red">Empresa inativa '+esc(fmtMesAnoCurto(x.e.inativoApartir||''))+'</span>':'')
+    const funBadge=funExcluido?' <span class="badge red">Excluído '+esc(fmtMesAnoCurto(x.f.excluidoApartir||''))+'</span>':(funInativo?' <span class="badge red">Inativo '+esc(fmtMesAnoCurto(x.f.inativoApartir||''))+'</span>':'')
+    const excluirInfo=x.f.excluidoApartir?'<span class="badge red">Exclui a partir de '+esc(fmtMesAnoCurto(x.f.excluidoApartir))+'</span>'+(x.f.restauradoApartir?'<br><span class="badge ok">Restaura em '+esc(fmtMesAnoCurto(x.f.restauradoApartir))+'</span>':''):'-'
+    const empCodSafe=String(x.e.codigo).replaceAll("'","\\'")
+    const funCodSafe=String(x.f.codigo).replaceAll("'","\\'")
+    const botoes=funExcluido
+      ? `<button class="btn small green" onclick="restaurarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Restaurar</button><button class="btn small out" onclick="carregarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Editar</button>`
+      : `<button class="btn small out" onclick="carregarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Editar</button><button class="btn small red" onclick="excluirFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Excluir</button>`
+    return `<tr><td>${esc(x.e.nome)}${empBadge}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}${funBadge}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${excluirInfo}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line">${botoes}</div></td></tr>`
+  }).join("")+"</tbody>"
 }
 function excluirFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
@@ -2007,8 +2070,31 @@ As competências anteriores a esse mês serão preservadas.`,sugerida)
 O sistema vai remover dos fechamentos de ${inicio} em diante.
 Competências anteriores não serão alteradas.`))return
   f.excluidoApartir=inicio
+  delete f.restauradoApartir
   removerFuncionarioDosFechamentos(emp.codigo,funCod,inicio)
   if(funcionarioEditando&&String(funcionarioEditando.empCod)===String(emp.codigo)&&String(funcionarioEditando.funCod)===String(funCod))limparFuncionarioForm()
+  saved()
+}
+
+function restaurarFuncionarioCadastro(empCod,funCod){
+  const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
+  if(!emp)return alert("Empresa não localizada.")
+  const f=(emp.funcionarios||[]).find(f=>String(f.codigo)===String(funCod))
+  if(!f)return alert("Funcionário não localizado.")
+  if(!String(f.excluidoApartir||"").trim())return alert("Este funcionário não está marcado como excluído.")
+  const sugerida=comp()||SEED.competenciaBase
+  let inicio=prompt(`A partir de qual competência deseja RESTAURAR o funcionário ${f.codigo} - ${f.nome}?
+
+Informe no formato AAAA-MM.
+Exemplo: ${sugerida}
+
+Ele voltará a aparecer da competência informada em diante.
+As competências anteriores continuarão preservadas.`,sugerida)
+  if(inicio===null)return
+  inicio=String(inicio).trim()
+  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!confirm(`Confirmar restauração do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?`))return
+  f.restauradoApartir=inicio
   saved()
 }
 let _evEditIdx=null
