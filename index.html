@@ -386,6 +386,11 @@ body.modal-aberto{overflow:hidden}
 <div class="card">
   <h3 style="color:var(--pri);margin-top:0">Funcionários</h3>
   <div class="row"><div><label>Filtrar empresa</label><select id="funEmpFiltro" onchange="renderFun()"></select></div><div><label>Busca</label><input id="funBusca" placeholder="Buscar funcionário..." oninput="renderFun()"></div></div>
+  <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+    <input id="mostrarEmpresasInativasFuncionario" type="checkbox" style="width:auto" onchange="renderFun()">
+    <label for="mostrarEmpresasInativasFuncionario" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">Mostrar empresas inativas</label>
+  </div>
+  <p class="muted" style="margin-top:6px">Empresas inativas ficam ocultas nesta aba para evitar vínculo ou lançamento por engano. Marque a opção acima apenas quando precisar consultar/editar histórico.</p>
   <div class="table-wrap"><table id="tabFun"></table></div>
 </div>
 </section>
@@ -1309,12 +1314,27 @@ function removerFuncionarioDosFechamentos(empCod,funCod,competenciaInicio){
     if(fe&&fe.funcionarios&&fe.funcionarios[chave])delete fe.funcionarios[chave]
   })
 }
-function empresasAtivas(){const c=comp(); return state.empresas.filter(e=>(e.funcionarios||[]).some(f=>funcionarioAtivoNaCompetencia(f,c)))}
+function empresaAtivaNaCompetencia(e,c){
+  if(!e)return false
+  const inicioExclusao=String(e.excluidoApartir||"").trim()
+  return !inicioExclusao || !c || c<inicioExclusao
+}
+function empresasAtivas(){const c=comp(); return state.empresas.filter(e=>empresaAtivaNaCompetencia(e,c)&&(e.funcionarios||[]).some(f=>funcionarioAtivoNaCompetencia(f,c)))}
 function empresaInativaCadastro(e){return !!(e&&(e.clienteInativo===true||e.statusCliente==="Inativo"||e.statusCliente==="Cliente inativo"))}
 function empresasCadastroVisiveis(){
+  // TRAVADO: na aba Empresas/Códigos, empresa nova ativa deve aparecer mesmo sem funcionário.
+  // O checkbox passa a liberar também inativas; empresa excluída só aparece nas competências anteriores à exclusão.
+  const c=comp()
   const mostrarTodos=!!document.getElementById("mostrarTodosClientesEmpresas")?.checked
-  const base=mostrarTodos?state.empresas:empresasAtivas().filter(e=>!empresaInativaCadastro(e))
+  const base=state.empresas.filter(e=>empresaAtivaNaCompetencia(e,c)&&(mostrarTodos||!empresaInativaCadastro(e)))
   return [...base].sort((a,b)=>Number(a.codigo)-Number(b.codigo)||String(a.nome||"").localeCompare(String(b.nome||"")))
+}
+function empresasFuncionarioVisiveis(){
+  // TRAVADO: para cadastrar funcionário, listar empresas ativas mesmo sem funcionário.
+  // Empresas inativas só entram se o usuário marcar o checkbox próprio desta aba.
+  const c=comp()
+  const mostrarInativas=!!document.getElementById("mostrarEmpresasInativasFuncionario")?.checked
+  return state.empresas.filter(e=>empresaAtivaNaCompetencia(e,c)&&(mostrarInativas||!empresaInativaCadastro(e))).sort((a,b)=>Number(a.codigo)-Number(b.codigo)||String(a.nome||"").localeCompare(String(b.nome||"")))
 }
 function popularEmpresas(){
   const opts=['<option value="">Todas as empresas</option>'].concat(empresasAtivas().map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`)).join("")
@@ -1813,11 +1833,45 @@ function renderEmp(){
     if(!busca)return true
     return [e.codigo,e.nome,e.cnpj||""].join(" ").toLowerCase().includes(busca)
   })
-  tabEmp.innerHTML="<thead><tr><th>Cód.</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Sindicato</th><th>Vínculo</th><th>Data-base</th><th>Status data-base</th><th>Dissídio/Obs.</th><th>Códigos</th><th>Ação</th></tr></thead><tbody>"+lista.map((e)=>`<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${empresaInativaCadastro(e)?"red":"ok"}">${empresaInativaCadastro(e)?"Inativo":"Ativo"}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="alert('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${String(e.codigo).replaceAll("'","\\'")}')">Editar</button></td></tr>`).join("")+"</tbody>"
+  tabEmp.innerHTML="<thead><tr><th>Cód.</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Sindicato</th><th>Vínculo</th><th>Data-base</th><th>Status data-base</th><th>Dissídio/Obs.</th><th>Códigos</th><th>Ação</th></tr></thead><tbody>"+lista.map((e)=>`<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${empresaInativaCadastro(e)?"red":"ok"}">${empresaInativaCadastro(e)?"Inativo":"Ativo"}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="alert('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><div class="action-line"><button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${String(e.codigo).replaceAll("'","\\'")}')">Editar</button><button class="btn small red" onclick="excluirEmpresaCadastro('${String(e.codigo).replaceAll("'","\\'")}')">Excluir</button></div></td></tr>`).join("")+"</tbody>"
+}
+function removerEmpresaDosFechamentos(empCod,competenciaInicio){
+  Object.keys(state.fechamentos||{}).forEach(c=>{
+    if(competenciaInicio && c<competenciaInicio)return
+    const fe=state.fechamentos[c]
+    if(!fe||!fe.funcionarios)return
+    Object.keys(fe.funcionarios).forEach(ch=>{if(String(ch).startsWith(String(empCod)+"|"))delete fe.funcionarios[ch]})
+  })
+}
+function excluirEmpresaCadastro(codEmp){
+  const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
+  if(!emp)return alert("Empresa não localizada.")
+  const sugerida=comp()||SEED.competenciaBase
+  const qtdFunc=(emp.funcionarios||[]).length
+  let inicio=prompt(`Excluir/ocultar a empresa ${emp.codigo} - ${emp.nome} a partir de qual competência?
+
+Informe no formato AAAA-MM.
+Exemplo: ${sugerida}
+
+A empresa será removida da competência informada em diante.
+Competências anteriores serão preservadas.
+Funcionários cadastrados nesta empresa: ${qtdFunc}.`,sugerida)
+  if(inicio===null)return
+  inicio=String(inicio).trim()
+  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!confirm(`Confirmar exclusão/ocultação da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?
+
+O sistema vai remover dos fechamentos de ${inicio} em diante.
+Competências anteriores não serão alteradas.`))return
+  emp.excluidoApartir=inicio
+  removerEmpresaDosFechamentos(emp.codigo,inicio)
+  if(empresaEditando&&String(empresaEditando)===String(emp.codigo))limparEmpresaForm()
+  saved()
 }
 function popularFunSelects(){
-  const opts=empresasAtivas().map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`).join("")
-  ;["funEmpCad","funEmpFiltro"].forEach(id=>{const s=document.getElementById(id); if(s){const v=s.value; s.innerHTML=(id==="funEmpFiltro"?'<option value="">Todas</option>':"")+opts; if(v)s.value=v}})
+  const lista=empresasFuncionarioVisiveis()
+  const opts=lista.map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}${empresaInativaCadastro(e)?" (INATIVO)":""}</option>`).join("")
+  ;["funEmpCad","funEmpFiltro"].forEach(id=>{const s=document.getElementById(id); if(s){const v=s.value; s.innerHTML=(id==="funEmpFiltro"?'<option value="">Todas</option>':"")+opts; if(v&&lista.some(e=>String(e.codigo)===String(v)))s.value=v}})
   const auto=document.getElementById("funAutoEvento"); if(auto){const v=auto.value; auto.innerHTML='<option value="">Sem automático</option>'+optsEventos(""); if(v)auto.value=v}
   const pad=document.getElementById("funEventoPadrao"); if(pad){const v=pad.value; pad.innerHTML=optsEventos(""); if(v)pad.value=v}
 }
@@ -1826,8 +1880,8 @@ function renderFun(){
   const empF=document.getElementById("funEmpFiltro")?.value||""
   const b=(document.getElementById("funBusca")?.value||"").toLowerCase()
   const competenciaAtual=comp()
-  let rows=[]; empresasAtivas().forEach(e=>{if(empF&&e.codigo!==empF)return; (e.funcionarios||[]).forEach(f=>{if(!funcionarioAtivoNaCompetencia(f,competenciaAtual))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao,f.statusDetectado,(f.observacoes||[]).join(" ")].join(" ").toLowerCase(); if(b&&!txt.includes(b))return; rows.push({e,f})})})
-  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>`<tr><td>${esc(x.e.nome)}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${x.f.excluidoApartir?'<span class="badge red">Exclui a partir de '+esc(x.f.excluidoApartir)+'</span>':'-'}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line"><button class="btn small out" onclick="carregarFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Editar</button><button class="btn small red" onclick="excluirFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Excluir</button></div></td></tr>`).join("")+"</tbody>"
+  let rows=[]; empresasFuncionarioVisiveis().forEach(e=>{if(empF&&String(e.codigo)!==String(empF))return; (e.funcionarios||[]).forEach(f=>{if(!funcionarioAtivoNaCompetencia(f,competenciaAtual))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao,f.statusDetectado,(f.observacoes||[]).join(" ")].join(" ").toLowerCase(); if(b&&!txt.includes(b))return; rows.push({e,f})})})
+  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>`<tr><td>${esc(x.e.nome)}${empresaInativaCadastro(x.e)?' <span class="badge red">Inativa</span>':''}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${x.f.excluidoApartir?'<span class="badge red">Exclui a partir de '+esc(x.f.excluidoApartir)+'</span>':'-'}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line"><button class="btn small out" onclick="carregarFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Editar</button><button class="btn small red" onclick="excluirFuncionarioCadastro('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Excluir</button></div></td></tr>`).join("")+"</tbody>"
 }
 function excluirFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
