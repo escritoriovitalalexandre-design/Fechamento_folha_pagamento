@@ -169,6 +169,12 @@ body.modal-aberto{overflow:hidden}
 .sind-adic-table select,.sind-adic-table input{min-width:120px;padding:8px 9px;font-size:13px}
 .sind-adic-table .sind-adic-obs{min-width:220px}
 .input-mes-curto{min-width:104px}
+.alert-sind-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.alert-sind-row{border-top:1px solid #edf1f7;padding-top:7px}
+.alert-sind-row:first-child{border-top:0;padding-top:0}
+.alert-sind-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.alert-sind-info{font-size:12px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.alert-sind-dissidio{font-size:13px;font-weight:700;color:#dc2626;margin-top:3px;overflow-wrap:anywhere;white-space:normal}
 
 </style>
 </head>
@@ -976,11 +982,21 @@ function toggleMultiSindCad(){
 }
 function cadSindAdicAdd(){empSindicatosAdicTemp.push({nome:"",dataBase:"",statusDataBase:"Em dia",dissidio:""}); renderCadSindicatosAdic()}
 function cadSindAdicRemove(i){empSindicatosAdicTemp.splice(i,1); renderCadSindicatosAdic()}
-function cadSindAdicChange(i,campo,valor){if(!empSindicatosAdicTemp[i])return; empSindicatosAdicTemp[i][campo]=campo==="dataBase"?normalizarMesExtenso(valor):valor; if(campo==="nome")aplicarDadosSindicatoAdicional(empSindicatosAdicTemp[i]); renderCadSindicatosAdic()}
+function cadSindAdicChange(i,campo,valor){
+  if(!empSindicatosAdicTemp[i])return
+  empSindicatosAdicTemp[i][campo]=campo==="dataBase"?normalizarMesExtenso(valor):valor
+  // TRAVADO: não renderizar a tabela a cada letra digitada no campo observação, para não perder o foco.
+  if(campo==="nome"){aplicarDadosSindicatoAdicional(empSindicatosAdicTemp[i]); renderCadSindicatosAdic()}
+}
 function renderCadSindicatosAdic(){renderTabelaSindicatosAdicionais("empSindicatosAdicBody",empSindicatosAdicTemp,"cad",document.getElementById("empSindCad")?.value||"")}
 function mEmpSindAdicAdd(){meSindicatosAdicTemp.push({nome:"",dataBase:"",statusDataBase:"Em dia",dissidio:""}); renderModalSindicatosAdic()}
 function mEmpSindAdicRemove(i){meSindicatosAdicTemp.splice(i,1); renderModalSindicatosAdic()}
-function mEmpSindAdicChange(i,campo,valor){if(!meSindicatosAdicTemp[i])return; meSindicatosAdicTemp[i][campo]=campo==="dataBase"?normalizarMesExtenso(valor):valor; if(campo==="nome")aplicarDadosSindicatoAdicional(meSindicatosAdicTemp[i]); renderModalSindicatosAdic()}
+function mEmpSindAdicChange(i,campo,valor){
+  if(!meSindicatosAdicTemp[i])return
+  meSindicatosAdicTemp[i][campo]=campo==="dataBase"?normalizarMesExtenso(valor):valor
+  // TRAVADO: não renderizar a tabela a cada letra digitada no campo observação, para não perder o foco.
+  if(campo==="nome"){aplicarDadosSindicatoAdicional(meSindicatosAdicTemp[i]); renderModalSindicatosAdic()}
+}
 function renderModalSindicatosAdic(){renderTabelaSindicatosAdicionais("meSindicatosAdicBody",meSindicatosAdicTemp,"mEmp",document.getElementById("meSind")?.value||"")}
 function normalizarListaSindicatosAdic(lista, principal){
   const usados=new Set([String(principal||"").trim()].filter(Boolean))
@@ -1434,10 +1450,11 @@ function confirmarAlternarStatusDBAdicional(empCod, idx, statusAtual, nomeEmp){
 }
 function renderAlertas(){
   const verTodas=document.getElementById("verTodasDatabases")?.checked
-  let a=[]
+  const grupos=[]
   empSelecionadas().forEach(e=>{
     const itens=[{principal:true,nome:e.sindicato||"",dataBase:dataBaseReferencia(e),status:statusDB(e),dissidio:e.dissidio||"",idx:-1}]
       .concat(sindicatoAdicionalDetalhesNormalizados(e).map((x,idx)=>({principal:false,nome:x.nome,dataBase:x.dataBase,status:statusDBSindicatoAdicional(x),dissidio:x.dissidio||"",idx})))
+    const linhas=[]
     itens.forEach(it=>{
       const st=it.status
       const noMes=dataBaseNoMesValor(it.dataBase)
@@ -1445,22 +1462,37 @@ function renderAlertas(){
       let mostrar=false
       if(st==="Vencida"){
         tipo=it.principal?"Data-base vencida":"Data-base vencida · Sindicato adicional"
-        mostrar=verTodas||true
+        mostrar=true
       }else if(st==="Aguardando"){
         tipo=it.principal?"Data-base aguardando":"Data-base aguardando · Sindicato adicional"
-        mostrar=verTodas||true
+        mostrar=true
       }else if(st==="Em dia"){
         tipo=it.principal?"Data-base em dia":"Data-base em dia · Sindicato adicional"
         mostrar=verTodas||noMes
       }
       if(mostrar){
-        a.push({tipo,emp:`${e.codigo} - ${e.nome}`,empCod:e.codigo,sind:it.nome||"",status:st,det:`${it.dataBase||"Sem data-base"} · ${it.nome||"Sem sindicato"} · ${st}`,dissidio:it.dissidio||"",principal:it.principal,idx:it.idx})
+        linhas.push({tipo,emp:`${e.codigo} - ${e.nome}`,empCod:e.codigo,sind:it.nome||"",status:st,det:`${it.dataBase||"Sem data-base"} · ${it.nome||"Sem sindicato"} · ${st}`,dissidio:it.dissidio||"",principal:it.principal,idx:it.idx})
       }
     })
+    let filtradas=linhas
+    if(_filtroAlerta==="emdia")filtradas=linhas.filter(x=>x.status==="Em dia")
+    else if(_filtroAlerta==="aguardando")filtradas=linhas.filter(x=>x.status==="Aguardando"||x.status==="Vencida")
+    if(filtradas.length)grupos.push({emp:`${e.codigo} - ${e.nome}`,linhas:filtradas})
   })
-  if(_filtroAlerta==="emdia")a=a.filter(x=>x.status==="Em dia")
-  else if(_filtroAlerta==="aguardando")a=a.filter(x=>x.status==="Aguardando"||x.status==="Vencida")
-  alertas.innerHTML=a.length?a.map(x=>`<div class="alert"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="badge ${dbClass(x.status)}" style="cursor:pointer" title="Clique para alternar o status" onclick="${x.principal?`confirmarAlternarStatusDB('${esc(x.empCod)}','${esc(x.status)}','${esc(x.emp)}')`:`confirmarAlternarStatusDBAdicional('${esc(x.empCod)}',${x.idx},'${esc(x.status)}','${esc(x.emp)}')`}">${esc(x.tipo)}</span><button class="btn small out" style="font-size:11px;padding:2px 8px" onclick="abrirSindicatoPainel('${esc(x.sind)}')">Ver sindicato →</button></div><div><strong>${esc(x.emp)}</strong></div><div class="muted">${esc(x.det)}</div>${x.dissidio?`<div style="font-size:13px;font-weight:700;color:#dc2626;margin-top:4px;overflow-wrap:anywhere">${esc(x.dissidio)}</div>`:""}</div>`).join(""):'<div class="alert"><strong>Nenhuma data-base para exibir'+((_filtroAlerta!=="todos")?" com este filtro":"")+'.</strong><div class="muted">O painel mostra data-base Vencida, Aguardando e Em dia somente quando for do mês da competência selecionada (ou marque "Ver todas as datas-base").</div></div>'
+
+  alertas.innerHTML=grupos.length?grupos.map(g=>{
+    const pior=g.linhas.some(x=>x.status==="Vencida")?"Vencida":(g.linhas.some(x=>x.status==="Aguardando")?"Aguardando":"Em dia")
+    const titulo=pior==="Vencida"?"Data-base vencida":(pior==="Aguardando"?"Data-base aguardando":"Data-base em dia")
+    const rows=g.linhas.map(x=>`<div class="alert-sind-row">
+      <div class="alert-sind-top">
+        <span class="badge ${dbClass(x.status)}" style="cursor:pointer" title="Clique para alternar o status" onclick="${x.principal?`confirmarAlternarStatusDB('${esc(x.empCod)}','${esc(x.status)}','${esc(x.emp)}')`:`confirmarAlternarStatusDBAdicional('${esc(x.empCod)}',${x.idx},'${esc(x.status)}','${esc(x.emp)}')`}">${esc(x.status)}${x.principal?"":" · adicional"}</span>
+        <button class="btn small out" style="font-size:11px;padding:2px 8px" onclick="abrirSindicatoPainel('${esc(x.sind)}')">Ver sindicato →</button>
+      </div>
+      <div class="alert-sind-info">${esc(x.det)}</div>
+      ${x.dissidio?`<div class="alert-sind-dissidio">${esc(x.dissidio)}</div>`:""}
+    </div>`).join("")
+    return `<div class="alert"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="badge ${dbClass(pior)}">${esc(titulo)}</span></div><div><strong>${esc(g.emp)}</strong></div><div class="alert-sind-list">${rows}</div></div>`
+  }).join(""):'<div class="alert"><strong>Nenhuma data-base para exibir'+((_filtroAlerta!=="todos")?" com este filtro":"")+'.</strong><div class="muted">O painel mostra data-base Vencida, Aguardando e Em dia somente quando for do mês da competência selecionada (ou marque "Ver todas as datas-base").</div></div>'
 }
 function renderPainelDetalhes(){}
 function salvarEventoLinha(e,f,i,row){
