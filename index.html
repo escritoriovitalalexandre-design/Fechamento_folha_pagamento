@@ -177,6 +177,19 @@ body.modal-aberto{overflow:hidden}
 .alert-sind-info{font-size:12px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
 .alert-sind-dissidio{font-size:13px;font-weight:700;color:#dc2626;margin-top:3px;overflow-wrap:anywhere;white-space:normal}
 
+
+/* v9 final - abas ASO, Laudos SST e Férias */
+.mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.mod-kpi{border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px;box-shadow:var(--shadow)}
+.mod-kpi b{display:block;font-size:22px;color:var(--pri)}
+.mod-kpi span{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.mod-status-ok{background:#dcfce7;color:#166534;font-weight:900}
+.mod-status-alerta{background:#fef3c7;color:#92400e;font-weight:900}
+.mod-status-vencido{background:#fee2e2;color:#991b1b;font-weight:900}
+.mod-mini{font-size:12px;color:var(--muted)}
+.mod-actions-inline{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mod-actions-inline input,.mod-actions-inline select{min-width:110px}
+
 </style>
 </head>
 <body>
@@ -212,6 +225,9 @@ body.modal-aberto{overflow:hidden}
 <button data-sec="relatorio">📤 Relatório de lançamento</button>
 <button data-sec="empresas">🏢 Empresas/Códigos</button>
 <button data-sec="sindicatos">🤝 Sindicatos</button>
+<button data-sec="asos">🩺 ASO Periódicos</button>
+<button data-sec="laudos">📑 Laudos SST</button>
+<button data-sec="ferias">🌴 Férias</button>
 <button data-sec="funcionarios">👥 Funcionários</button>
 <button data-sec="eventos">🔢 Códigos/Eventos</button>
 <button data-sec="regras">⚡ Regras especiais</button>
@@ -362,6 +378,7 @@ body.modal-aberto{overflow:hidden}
     <div class="fun-cod-small"><label>Código</label><input id="funCodCad" placeholder="001"></div>
     <div class="fun-nome-wide"><label>Nome</label><input id="funNomeCad" placeholder="Nome completo do funcionário"></div>
     <div class="fun-funcao-small"><label>Função</label><input id="funFuncaoCad" placeholder="Função"></div>
+    <div><label>Data admissão</label><input id="funAdmCad" type="date"></div>
     <div><label>Salário</label><input id="funSalCad" placeholder="2.500,00" onblur="this.value=formatMoneyInput(this.value)"></div>
     <div class="fun-status-small"><label>Status</label><select id="funStatusCad"><option>Ativo</option><option>Admitido</option><option>Rescisão</option><option>Férias</option><option>Afastado</option><option>Licença maternidade</option><option>Inativo</option></select></div>
     <div><label>Evento automático</label><select id="funAutoEvento"></select></div>
@@ -502,6 +519,96 @@ body.modal-aberto{overflow:hidden}
     </div>
   </div>
 </div>
+</section>
+
+
+<section id="asos" class="section">
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">ASO Periódicos <span class="badge ok">Versão final</span></h3>
+    <p class="muted">Controle dos exames periódicos por funcionário. Usa o cadastro atual de empresas e funcionários, sem alterar o fechamento mensal.</p>
+    <div class="mod-grid">
+      <div class="mod-kpi"><b id="asoTotal">0</b><span>Total</span></div>
+      <div class="mod-kpi"><b id="asoOk">0</b><span>Em dia</span></div>
+      <div class="mod-kpi"><b id="asoAlerta">0</b><span>Vence em 10 dias</span></div>
+      <div class="mod-kpi"><b id="asoVencido">0</b><span>Vencidos</span></div>
+    </div>
+    <div class="row"><div><label>Empresa</label><select id="asoEmpFiltro" onchange="renderASO()"><option value="">Todas</option></select></div><div><label>Status</label><select id="asoStatusFiltro" onchange="renderASO()"><option value="">Todos</option><option value="OK">Em dia</option><option value="ALERTA">Vence em 10 dias</option><option value="VENCIDO">Vencido</option><option value="SEM_DATA">Sem data</option></select></div><div><label>Busca</label><input id="asoBusca" oninput="renderASO()" placeholder="Funcionário, empresa, função..."></div><div><label>Ação</label><div class="actions"><button class="btn out" onclick="renderASO()">Atualizar</button><button class="btn pri" onclick="gerarPDFASOTeste()">PDF</button></div></div></div>
+    <div class="table-wrap" style="margin-top:12px"><table id="tabASO"></table></div>
+  </div>
+</section>
+
+<section id="laudos" class="section">
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">Laudos SST <span class="badge ok">Versão final</span></h3>
+    <p class="muted">Controle de vencimentos dos laudos SST por empresa: PCMSO, PGR, LTCAT e outros.</p>
+    <div class="mod-grid">
+      <div class="mod-kpi"><b id="laudoTotal">0</b><span>Total</span></div>
+      <div class="mod-kpi"><b id="laudoOk">0</b><span>Em dia</span></div>
+      <div class="mod-kpi"><b id="laudoAlerta">0</b><span>Vence em 10 dias</span></div>
+      <div class="mod-kpi"><b id="laudoVencido">0</b><span>Vencidos</span></div>
+    </div>
+    <div class="row">
+      <div><label>Empresa</label><select id="laudoEmpNovo"></select></div>
+      <div><label>Tipo de laudo</label><select id="laudoTipoNovo"><option>PCMSO</option><option>PGR</option><option>LTCAT</option><option>PCMSO / PGR / LTCAT</option><option>PPP</option><option>Outro</option></select></div>
+      <div><label>Grau de risco</label><select id="laudoRiscoNovo"><option value="">Não informado</option><option>Risco 1</option><option>Risco 2</option><option>Risco 3</option></select></div>
+      <div><label>Último laudo</label><input id="laudoDataNovo" type="date"></div>
+    </div>
+    <div class="row" style="margin-top:10px"><div><label>Prazo meses</label><input id="laudoPrazoNovo" type="number" min="1" value="12"></div><div style="grid-column:span 2"><label>Observação</label><input id="laudoObsNovo" placeholder="Ex.: clínica, responsável, pendência..."></div><div><label>Ação</label><button class="btn pri" onclick="salvarLaudoTeste()">+ Salvar laudo</button></div></div>
+    <div class="row" style="margin-top:14px"><div><label>Filtrar empresa</label><select id="laudoEmpFiltro" onchange="renderLaudos()"><option value="">Todas</option></select></div><div><label>Tipo</label><select id="laudoTipoFiltro" onchange="renderLaudos()"><option value="">Todos</option><option>PCMSO</option><option>PGR</option><option>LTCAT</option><option>PCMSO / PGR / LTCAT</option><option>PPP</option><option>Outro</option></select></div><div><label>Status</label><select id="laudoStatusFiltro" onchange="renderLaudos()"><option value="">Todos</option><option value="OK">Em dia</option><option value="ALERTA">Vence em 10 dias</option><option value="VENCIDO">Vencido</option><option value="SEM_DATA">Sem data</option></select></div><div><label>Busca</label><input id="laudoBusca" oninput="renderLaudos()" placeholder="Empresa, tipo, observação..."></div></div><div class="actions" style="justify-content:flex-end;margin-top:10px"><button class="btn pri" onclick="gerarPDFLaudosTeste()">Gerar PDF</button></div>
+    <div class="table-wrap" style="margin-top:12px"><table id="tabLaudos"></table></div>
+  </div>
+</section>
+
+<!-- Modal simples para editar Laudos SST -->
+<div id="modalLaudoTeste" class="overlay-sind">
+  <div class="sind-modal" style="max-width:720px">
+    <h3>Editar Laudo SST</h3>
+    <p class="muted" id="laudoEditEmpresaInfo" style="margin-top:-4px"></p>
+    <input type="hidden" id="laudoEditId">
+    <div class="sind-grid">
+      <div><label>Tipo de laudo</label><select id="laudoEditTipo"><option>PCMSO</option><option>PGR</option><option>LTCAT</option><option>PCMSO / PGR / LTCAT</option><option>PPP</option><option>Outro</option></select></div>
+      <div><label>Grau de risco</label><select id="laudoEditRisco"><option value="">Não informado</option><option>Risco 1</option><option>Risco 2</option><option>Risco 3</option></select></div>
+      <div><label>Último laudo</label><input id="laudoEditUltimo" type="date"></div>
+      <div><label>Prazo meses</label><input id="laudoEditPrazo" type="number" min="1" value="12"></div>
+      <div style="grid-column:1/-1"><label>Observação</label><input id="laudoEditObs" placeholder="Obs."></div>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn out" onclick="fecharEditarLaudoTeste()">Cancelar</button>
+      <button class="btn pri" onclick="salvarLaudoModalTeste()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal simples para observações de Férias -->
+<div id="modalFeriasObsTeste" class="overlay-sind">
+  <div class="sind-modal" style="max-width:680px">
+    <h3>Observação de Férias</h3>
+    <p class="muted" id="feriasObsInfo" style="margin-top:-4px"></p>
+    <input type="hidden" id="feriasObsEmpCod">
+    <input type="hidden" id="feriasObsFunCod">
+    <div><label>Observação</label><textarea id="feriasObsTexto" rows="7" placeholder="Digite aqui as observações das férias..." style="width:100%;min-height:150px"></textarea></div>
+    <div class="actions" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn out" onclick="fecharObsFeriasTeste()">Cancelar</button>
+      <button class="btn pri" onclick="salvarObsFeriasTeste()">Salvar observação</button>
+    </div>
+  </div>
+</div>
+
+<section id="ferias" class="section">
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">Férias <span class="badge ok">Versão final</span></h3>
+    <p class="muted">Controle de períodos aquisitivos. A data de admissão vem do cadastro do funcionário; nesta aba você atualiza o último período controlado/baixado.</p>
+    <div class="mod-grid">
+      <div class="mod-kpi"><b id="feriasTotal">0</b><span>Total</span></div>
+      <div class="mod-kpi"><b id="feriasOk">0</b><span>Férias OK</span></div>
+      <div class="mod-kpi"><b id="feriasAlerta">0</b><span>Alerta 15 dias</span></div>
+      <div class="mod-kpi"><b id="feriasVenc1">0</b><span>1 período vencido</span></div>
+      <div class="mod-kpi"><b id="feriasVenc2">0</b><span>2+ períodos acumulados</span></div>
+    </div>
+    <div class="row"><div><label>Empresa</label><select id="feriasEmpFiltro" onchange="renderFerias()"><option value="">Todas</option></select></div><div><label>Status</label><select id="feriasStatusFiltro" onchange="renderFerias()"><option value="">Todos</option><option value="OK">Férias OK</option><option value="ALERTA_15">Alerta 15 dias</option><option value="VENCIDO_1">1 período vencido</option><option value="VENCIDO_2PLUS">2 ou mais períodos acumulados</option><option value="SEM_ADMISSAO">Sem admissão</option></select></div><div><label>Busca</label><input id="feriasBusca" oninput="renderFerias()" placeholder="Funcionário, empresa, função..."></div><div><label>Ação</label><div class="actions"><button class="btn out" onclick="renderFerias()">Atualizar</button><button class="btn pri" onclick="gerarPDFFeriasTeste()">PDF</button></div></div></div>
+    <div class="table-wrap" style="margin-top:12px"><table id="tabFerias"></table></div>
+    <p class="muted" style="margin-top:10px">Regra de alerta: mostra períodos em aberto/acumulados; o limite de segurança é 1 mês antes do prazo máximo de gozo, com alerta 15 dias antes.</p>
+  </div>
 </section>
 
 <section id="facilitador" class="section">
@@ -856,6 +963,9 @@ function normalizarState(s){
   if(!s.fechamentos)s.fechamentos={}
   if(!Array.isArray(s.eventos))s.eventos=[]
   if(!Array.isArray(s.sindicatos))s.sindicatos=[]
+  if(!Array.isArray(s.asos))s.asos=[]
+  if(!Array.isArray(s.laudos))s.laudos=[]
+  if(!Array.isArray(s.ferias))s.ferias=[]
   s.sindicatos=s.sindicatos.map(x=>({...x,razao:x.razao||"",cnpj:x.cnpj||"",resumoConvencao:x.resumoConvencao||"",anexos:Array.isArray(x.anexos)?x.anexos:[]}))
   s.eventos=s.eventos.map(e=>({...e,tipo:e.tipo||"Valor"}))
   const cods=new Set(s.eventos.map(e=>String(e.codigo)))
@@ -886,7 +996,7 @@ function normalizarState(s){
     if(emp.statusDataBase==="Atrasado"||emp.statusDataBase==="Vencida")emp.statusDataBase="Em dia"
     if(emp.statusDataBase==="Em dia"&&!emp.dataBaseEmDiaAno)emp.dataBaseEmDiaAno=Number((SEED.competenciaBase||"").split("-")[0]||new Date().getFullYear())
     if(!emp.obsInterna)emp.obsInterna=""
-    ;(emp.funcionarios||[]).forEach(fun=>{if(!fun.autoEventos)fun.autoEventos=[]; normalizarEventosCadastradosFuncionario(fun)})
+    ;(emp.funcionarios||[]).forEach(fun=>{if(!fun.autoEventos)fun.autoEventos=[]; if(!fun.admissao)fun.admissao=""; normalizarEventosCadastradosFuncionario(fun)})
   })
   const sindSet=new Set(s.sindicatos.map(x=>String(x.nome||"").trim()).filter(Boolean))
   ;(s.empresas||[]).forEach(emp=>{
@@ -1521,7 +1631,7 @@ async function iniciarApp(){
   emp2.onchange=()=>{emp1.value=emp2.value;renderAll()};
   popularEmpresas(); facRenderLinhas(); renderAll();
 }
-function show(id){document.querySelectorAll(".section").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===id)); const t={painel:["Painel de controle","Resumo geral e alertas."],fechamento:["Fechamento mensal","Lançar, conferir e travar eventos por funcionário."],relatorio:["Relatório de lançamento","Exportação para digitar no outro programa."],empresas:["Empresas/Códigos","Empresas, sindicatos e eventos permitidos por empresa."],sindicatos:["Sindicatos","Cadastro de sindicato, contato, data-base e benefícios."],funcionarios:["Funcionários","Cadastro, observações e eventos vinculados ao funcionário."],eventos:["Códigos/Eventos","Eventos permitidos para lançamento."],regras:["Regras especiais","Horas fixas por dia da semana — cálculo automático por competência."],facilitador:["Facilitador","Ferramentas auxiliares do DP."],backup:["Backup","Salvar e restaurar dados locais."]}[id]; titulo.textContent=t[0]; sub.textContent=t[1]; renderAll()}
+function show(id){document.querySelectorAll(".section").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===id)); const t={painel:["Painel de controle","Resumo geral e alertas."],fechamento:["Fechamento mensal","Lançar, conferir e travar eventos por funcionário."],relatorio:["Relatório de lançamento","Exportação para digitar no outro programa."],empresas:["Empresas/Códigos","Empresas, sindicatos e eventos permitidos por empresa."],sindicatos:["Sindicatos","Cadastro de sindicato, contato, data-base e benefícios."],funcionarios:["Funcionários","Cadastro, observações e eventos vinculados ao funcionário."],eventos:["Códigos/Eventos","Eventos permitidos para lançamento."],regras:["Regras especiais","Horas fixas por dia da semana — cálculo automático por competência."],asos:["ASO Periódicos","Controle de vencimentos dos exames periódicos."],laudos:["Laudos SST","Controle de PCMSO, PGR, LTCAT e laudos SST."],ferias:["Férias","Controle de períodos aquisitivos e vencimentos."],facilitador:["Facilitador","Ferramentas auxiliares do DP."],backup:["Backup","Salvar e restaurar dados locais."]}[id]; titulo.textContent=t[0]; sub.textContent=t[1]; renderAll()}
 function flatFuncs(){let a=[]; const c=comp(); empresasAtivas().forEach(e=>(e.funcionarios||[]).forEach(f=>{if(!funcionarioAtivoNaCompetencia(f,c))return; a.push({e,f,fs:fs(e,f)})})); return a}
 function filtrados(){
   const sec=document.querySelector(".section.active")?.id||"painel"
@@ -2034,7 +2144,7 @@ function renderFun(){
   const mostrarFuncInativos=!!document.getElementById("mostrarFuncionariosInativos")?.checked
   const mostrarFuncExcluidos=!!document.getElementById("mostrarFuncionariosExcluidos")?.checked
   let rows=[]; empresasFuncionarioVisiveis().forEach(e=>{if(empF&&String(e.codigo)!==String(empF))return; (e.funcionarios||[]).forEach(f=>{if(!funcionarioVisivelCadastro(f,competenciaAtual,mostrarFuncInativos,mostrarFuncExcluidos))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao,f.statusDetectado,(f.observacoes||[]).join(" ")].join(" ").toLowerCase(); if(b&&!txt.includes(b))return; rows.push({e,f})})})
-  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>{
+  tabFun.innerHTML="<thead><tr><th>Empresa</th><th>Cód.</th><th>Funcionário</th><th>Função</th><th>Admissão</th><th class='fun-salario-col'>Salário</th><th>Status</th><th>Automático</th><th>Exclusão</th><th>Observações</th><th>Ação</th></tr></thead><tbody>"+rows.map(x=>{
     const empInativa=empresaInativaNaCompetencia(x.e,competenciaAtual)
     const empExcluida=empresaExcluidaNaCompetencia(x.e,competenciaAtual)
     const funInativo=funcionarioInativoNaCompetencia(x.f,competenciaAtual)
@@ -2047,7 +2157,7 @@ function renderFun(){
     const botoes=funExcluido
       ? `<button class="btn small green" onclick="restaurarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Restaurar</button><button class="btn small out" onclick="carregarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Editar</button>`
       : `<button class="btn small out" onclick="carregarFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Editar</button><button class="btn small red" onclick="excluirFuncionarioCadastro('${empCodSafe}','${funCodSafe}')">Excluir</button>`
-    return `<tr><td>${esc(x.e.nome)}${empBadge}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}${funBadge}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${excluirInfo}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line">${botoes}</div></td></tr>`
+    return `<tr><td>${esc(x.e.nome)}${empBadge}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td>${esc(fmtDataBR(x.f.admissao||""))}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}${funBadge}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${excluirInfo}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line">${botoes}</div></td></tr>`
   }).join("")+"</tbody>"
 }
 function excluirFuncionarioCadastro(empCod,funCod){
@@ -2591,7 +2701,7 @@ function salvarFuncionarioCadastro(){
   const novo=!f
   if(!confirm((novo?"Cadastrar":"Salvar alterações deste")+" funcionário?"))return
   if(!f){f={codigo:cod,nome:"",funcao:"",salario:"",statusDetectado:"Ativo",observacoes:[],eventos:[],autoEventos:[]}; emp.funcionarios.push(f)}
-  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.salario=funSalCad.value.trim(); if(!aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
+  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.admissao=(document.getElementById("funAdmCad")?.value||""); f.salario=funSalCad.value.trim(); if(!aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
   f.observacoes=funObsCad.value.trim()?[funObsCad.value.trim()]:[]
   f.autoEventos=clone(funAutoTemp)
   f.eventos=clone(funEventoTemp)
@@ -2619,7 +2729,7 @@ function carregarFuncionarioCadastro(empCod,funCod){
   const f=emp?.funcionarios.find(x=>x.codigo===funCod)
   if(!f)return
   // Preenche os campos originais (usados por salvarFuncionarioCadastro)
-  funEmpCad.value=empCod; funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
+  funEmpCad.value=empCod; funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; if(document.getElementById("funAdmCad"))funAdmCad.value=f.admissao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
   funAutoTemp=clone(f.autoEventos||[]).map(a=>({...a,inicio:a.inicio||"",fim:a.fim||""}))
   funEventoTemp=clone(f.eventos||[])
   funAutoEvento.value=""; funAutoQtd.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""
@@ -2649,8 +2759,9 @@ function abrirModalFuncionario(emp,f){
   <div><label>Código</label><input id="mfCod" value="${esc(f.codigo)}"></div>
   <div class="mf-nome-largo"><label>Nome</label><input id="mfNome" value="${esc(f.nome||"")}"></div>
 </div>
-<div class="row" style="grid-template-columns:1fr 140px 120px;gap:10px;margin-top:8px">
+<div class="row" style="grid-template-columns:1fr 135px 140px 120px;gap:10px;margin-top:8px">
   <div><label>Função</label><input id="mfFuncao" value="${esc(f.funcao||"")}"></div>
+  <div><label>Data admissão</label><input id="mfAdm" type="date" value="${esc(f.admissao||"")}"></div>
   <div><label>Salário</label><input id="mfSal" value="${esc(f.salario||"")}" onblur="this.value=formatMoneyInput(this.value)"></div>
   <div><label>Status</label><select id="mfStatus">${statusOpts}</select></div>
 </div>
@@ -2846,6 +2957,7 @@ function mFunSalvar(){
   funCodCad.value=cod
   funNomeCad.value=document.getElementById("mfNome")?.value||""
   funFuncaoCad.value=document.getElementById("mfFuncao")?.value||""
+  if(document.getElementById("funAdmCad"))funAdmCad.value=document.getElementById("mfAdm")?.value||""
   funSalCad.value=document.getElementById("mfSal")?.value||""
   funStatusCad.value=document.getElementById("mfStatus")?.value||"Ativo"
   funObsCad.value=document.getElementById("mfObs")?.value||""
@@ -3945,7 +4057,274 @@ function painelMsgEditar(){const txt=document.getElementById("painelMsgView").te
 function painelMsgCancelar(){document.getElementById("painelMsgView").style.display="block";document.getElementById("painelMsgEdit").style.display="none"}
 function painelMsgSalvar(){const txt=document.getElementById("painelMsgTxt").value;localStorage.setItem("painelMsg",txt);sbSet(SB_CHAVE_PAINEL,txt);document.getElementById("painelMsgView").textContent=txt;painelMsgCancelar()}
 
-function renderAll(){renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
+
+
+// ===================== v9 FINAL: ASO, LAUDOS SST E FÉRIAS =====================
+function hojeISO(){return new Date().toISOString().slice(0,10)}
+function parseISODate(v){if(!v)return null; const d=new Date(String(v)+'T00:00:00'); return isNaN(d)?null:d}
+function addMesesISO(v,meses){const d=parseISODate(v); if(!d)return ''; const dia=d.getDate(); const r=new Date(d); r.setMonth(r.getMonth()+Number(meses||0)); if(r.getDate()<dia)r.setDate(0); return r.toISOString().slice(0,10)}
+function addDiasISO(v,dias){const d=parseISODate(v); if(!d)return ''; d.setDate(d.getDate()+Number(dias||0)); return d.toISOString().slice(0,10)}
+function diffDias(v){const d=parseISODate(v); if(!d)return null; const h=parseISODate(hojeISO()); return Math.ceil((d-h)/86400000)}
+function fmtDataBR(v){const d=parseISODate(v); if(!d)return ''; return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()}
+function statusVencimento(dataVenc){if(!dataVenc)return {cod:'SEM_DATA',txt:'Sem data',cls:'mod-status-alerta',dias:null}; const dias=diffDias(dataVenc); if(dias<0)return {cod:'VENCIDO',txt:'Vencido',cls:'mod-status-vencido',dias}; if(dias<=10)return {cod:'ALERTA',txt:'Vence em 10 dias',cls:'mod-status-alerta',dias}; return {cod:'OK',txt:'Em dia',cls:'mod-status-ok',dias}}
+function funcionariosOperacionaisTeste(){const c=comp(); const arr=[]; empresasAtivas().forEach(e=>(e.funcionarios||[]).forEach(f=>{if(funcionarioAtivoNaCompetencia(f,c))arr.push({e,f})})); return arr}
+function popularSelectsModulos(){
+  const optsTodas='<option value="">Todas</option>'+empresasAtivas().map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`).join('')
+  ;['asoEmpFiltro','laudoEmpFiltro','feriasEmpFiltro'].forEach(id=>{const el=document.getElementById(id); if(el){const v=el.value; el.innerHTML=optsTodas; if(v)el.value=v}})
+  const opts=empresasAtivas().map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`).join('')
+  const ln=document.getElementById('laudoEmpNovo'); if(ln){const v=ln.value; ln.innerHTML=opts; if(v)ln.value=v}
+}
+function asoRec(empCod,funCod){if(!Array.isArray(state.asos))state.asos=[]; let r=state.asos.find(x=>String(x.empCod)===String(empCod)&&String(x.funCod)===String(funCod)); if(!r){r={empCod,funCod,ultimo:'',prazo:12,obs:''}; state.asos.push(r)} return r}
+function salvarASOTeste(empCod,funCod){const r=asoRec(empCod,funCod); r.ultimo=document.getElementById(`asoData_${empCod}_${funCod}`)?.value||''; r.prazo=Number(document.getElementById(`asoPrazo_${empCod}_${funCod}`)?.value||12); r.obs=document.getElementById(`asoObs_${empCod}_${funCod}`)?.value||''; saved()}
+function renderASO(){popularSelectsModulos(); const empF=document.getElementById('asoEmpFiltro')?.value||''; const stF=document.getElementById('asoStatusFiltro')?.value||''; const busca=(document.getElementById('asoBusca')?.value||'').toLowerCase(); let rows=[]; let k={total:0,ok:0,alerta:0,vencido:0}; funcionariosOperacionaisTeste().forEach(({e,f})=>{if(empF&&String(e.codigo)!==String(empF))return; const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao].join(' ').toLowerCase(); if(busca&&!txt.includes(busca))return; const r=asoRec(e.codigo,f.codigo); const venc=addMesesISO(r.ultimo,r.prazo||12); const st=statusVencimento(venc); if(stF&&st.cod!==stF)return; k.total++; if(st.cod==='OK')k.ok++; if(st.cod==='ALERTA')k.alerta++; if(st.cod==='VENCIDO')k.vencido++; rows.push({e,f,r,venc,st})});
+  if(asoTotal){asoTotal.textContent=k.total; asoOk.textContent=k.ok; asoAlerta.textContent=k.alerta; asoVencido.textContent=k.vencido}
+  const tab=document.getElementById('tabASO'); if(!tab)return; tab.innerHTML='<thead><tr><th>Funcionário</th><th>Empresa</th><th>Função</th><th>Último ASO</th><th>Prazo</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Observação</th><th>Ação</th></tr></thead><tbody>'+rows.map(x=>{const id=`${x.e.codigo}_${x.f.codigo}`; return `<tr><td><b>${esc(x.f.nome)}</b><div class="mod-mini">Cód. ${esc(x.f.codigo)}</div></td><td>${esc(x.e.nome)}</td><td>${esc(x.f.funcao||'')}</td><td><input id="asoData_${id}" type="date" value="${esc(x.r.ultimo||'')}"></td><td><input id="asoPrazo_${id}" type="number" min="1" value="${esc(x.r.prazo||12)}" style="width:80px"></td><td>${esc(fmtDataBR(x.venc)||'-')}</td><td><span class="badge ${x.st.cls}">${esc(x.st.txt)}</span></td><td>${x.st.dias===null?'-':esc(x.st.dias+' dias')}</td><td><input id="asoObs_${id}" value="${esc(x.r.obs||'')}" placeholder="Obs."></td><td><button class="btn small pri" onclick="salvarASOTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Salvar</button></td></tr>`}).join('')+'</tbody>'}
+function salvarLaudoTeste(){
+  if(!Array.isArray(state.laudos))state.laudos=[];
+  const empCod=laudoEmpNovo.value;
+  const tipo=laudoTipoNovo.value;
+  if(!empCod||!tipo)return alert('Informe empresa e tipo de laudo.');
+  let r=state.laudos.find(x=>String(x.empCod)===String(empCod)&&String(x.tipo)===String(tipo));
+  if(!r){r={id:Date.now()+Math.random(),empCod,tipo,grauRisco:'',ultimo:'',prazo:12,obs:''}; state.laudos.push(r)}
+  r.grauRisco=laudoRiscoNovo?.value||'';
+  r.ultimo=laudoDataNovo.value||'';
+  r.prazo=Number(laudoPrazoNovo.value||12);
+  r.obs=laudoObsNovo.value||'';
+  saved();
+}
+function salvarLaudoLinhaTeste(id){
+  const r=(state.laudos||[]).find(x=>String(x.id)===String(id));
+  if(!r)return;
+  const pref=`laudoLin_${id}`;
+  // TRAVADO: a empresa do laudo não é alterada na relação abaixo; seleção de empresa fica somente no cadastro superior.
+  r.tipo=document.getElementById(`${pref}_tipo`)?.value||r.tipo;
+  r.grauRisco=document.getElementById(`${pref}_risco`)?.value||'';
+  r.ultimo=document.getElementById(`${pref}_ultimo`)?.value||'';
+  r.prazo=Number(document.getElementById(`${pref}_prazo`)?.value||12);
+  r.obs=document.getElementById(`${pref}_obs`)?.value||'';
+  saved();
+}
+function excluirLaudoTeste(id){if(!confirm('Excluir este laudo?'))return; state.laudos=(state.laudos||[]).filter(x=>String(x.id)!==String(id)); saved()}
+function renderLaudos(){
+  popularSelectsModulos();
+  if(!Array.isArray(state.laudos))state.laudos=[];
+  const empF=laudoEmpFiltro?.value||'';
+  const tipoF=laudoTipoFiltro?.value||'';
+  const stF=laudoStatusFiltro?.value||'';
+  const busca=(laudoBusca?.value||'').toLowerCase();
+  let rows=[]; let k={total:0,ok:0,alerta:0,vencido:0};
+  state.laudos.forEach(r=>{
+    if(r.grauRisco===undefined)r.grauRisco='';
+    const e=state.empresas.find(x=>String(x.codigo)===String(r.empCod));
+    if(!e||!empresaAtivaNaCompetencia(e,comp()))return;
+    if(empF&&String(r.empCod)!==String(empF))return;
+    if(tipoF&&String(r.tipo)!==String(tipoF))return;
+    const venc=addMesesISO(r.ultimo,r.prazo||12);
+    const st=statusVencimento(venc);
+    if(stF&&st.cod!==stF)return;
+    const txt=[e.nome,e.codigo,r.tipo,r.grauRisco,r.obs].join(' ').toLowerCase();
+    if(busca&&!txt.includes(busca))return;
+    k.total++; if(st.cod==='OK')k.ok++; if(st.cod==='ALERTA')k.alerta++; if(st.cod==='VENCIDO')k.vencido++;
+    rows.push({e,r,venc,st})
+  });
+  if(laudoTotal){laudoTotal.textContent=k.total; laudoOk.textContent=k.ok; laudoAlerta.textContent=k.alerta; laudoVencido.textContent=k.vencido}
+  const tab=document.getElementById('tabLaudos'); if(!tab)return;
+  tab.innerHTML='<thead><tr><th>Código / Empresa</th><th>Tipo</th><th>Grau de risco</th><th>Último laudo</th><th>Prazo</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Observação</th><th>Ações</th></tr></thead><tbody>'+rows.map(x=>`<tr><td><b>${esc(x.e.codigo)} - ${esc(x.e.nome)}</b><div class="mod-mini">Empresa definida no cadastro do laudo</div></td><td>${esc(x.r.tipo||'-')}</td><td>${esc(x.r.grauRisco||'Não informado')}</td><td>${esc(fmtDataBR(x.r.ultimo)||'-')}</td><td>${esc(x.r.prazo||12)} meses</td><td>${esc(fmtDataBR(x.venc)||'-')}</td><td><span class="badge ${x.st.cls}">${esc(x.st.txt)}</span></td><td>${x.st.dias===null?'-':esc(x.st.dias+' dias')}</td><td>${esc(x.r.obs||'-')}</td><td><div class="action-line"><button class="btn small pri" onclick="abrirEditarLaudoTeste('${esc(x.r.id)}')">Editar</button><button class="btn small red" onclick="excluirLaudoTeste('${esc(x.r.id)}')">Excluir</button></div></td></tr>`).join('')+'</tbody>'
+}
+function abrirEditarLaudoTeste(id){
+  const r=(state.laudos||[]).find(x=>String(x.id)===String(id));
+  if(!r)return;
+  const e=state.empresas.find(x=>String(x.codigo)===String(r.empCod));
+  document.getElementById('laudoEditId').value=r.id;
+  document.getElementById('laudoEditEmpresaInfo').textContent=e?`${e.codigo} - ${e.nome}`:'Empresa não localizada';
+  document.getElementById('laudoEditTipo').value=r.tipo||'PCMSO';
+  document.getElementById('laudoEditRisco').value=r.grauRisco||'';
+  document.getElementById('laudoEditUltimo').value=r.ultimo||'';
+  document.getElementById('laudoEditPrazo').value=r.prazo||12;
+  document.getElementById('laudoEditObs').value=r.obs||'';
+  document.getElementById('modalLaudoTeste')?.classList.add('open');
+  document.body.classList.add('modal-aberto');
+}
+function fecharEditarLaudoTeste(){
+  document.getElementById('modalLaudoTeste')?.classList.remove('open');
+  document.body.classList.remove('modal-aberto');
+}
+function salvarLaudoModalTeste(){
+  const id=document.getElementById('laudoEditId')?.value;
+  const r=(state.laudos||[]).find(x=>String(x.id)===String(id));
+  if(!r)return;
+  r.tipo=document.getElementById('laudoEditTipo')?.value||'PCMSO';
+  r.grauRisco=document.getElementById('laudoEditRisco')?.value||'';
+  r.ultimo=document.getElementById('laudoEditUltimo')?.value||'';
+  r.prazo=Number(document.getElementById('laudoEditPrazo')?.value||12);
+  r.obs=document.getElementById('laudoEditObs')?.value||'';
+  fecharEditarLaudoTeste();
+  saved();
+}
+function feriasRec(empCod,funCod){if(!Array.isArray(state.ferias))state.ferias=[]; let r=state.ferias.find(x=>String(x.empCod)===String(empCod)&&String(x.funCod)===String(funCod)); if(!r){r={empCod,funCod,ultimoInicio:'',ultimoFim:'',obs:''}; state.ferias.push(r)} return r}
+function periodoPorIndiceFerias(baseIni,indice){
+  const ini=addMesesISO(baseIni,12*(indice-1));
+  const fim=addDiasISO(addMesesISO(ini,12),-1);
+  const venc=addMesesISO(fim,12);
+  const limite=addMesesISO(venc,-1);
+  const alerta=addDiasISO(limite,-15);
+  return {ini,fim,venc,limite,alerta};
+}
+function analiseFerias(f,r){
+  if(!f.admissao)return {semAdmissao:true,baseIni:'',periodoAtual:{},prazoPrimeiro:'',periodosAbertos:0,periodosVencidosGozo:0,limiteCritico:'',alertaCritico:'',limiteMaisAntigo:'',alertaMaisAntigo:'',cod:'SEM_ADMISSAO',txt:'Sem admissão',cls:'mod-status-alerta'};
+  const baseIni=r.ultimoFim?addDiasISO(r.ultimoFim,1):f.admissao;
+  const hoje=hojeISO();
+  let periodosAbertos=0;
+  let periodosVencidosGozo=0;
+  for(let i=1;i<=20;i++){
+    const p=periodoPorIndiceFerias(baseIni,i);
+    if(p.fim && hoje>=p.fim)periodosAbertos=i; else break;
+  }
+  for(let i=1;i<=20;i++){
+    const p=periodoPorIndiceFerias(baseIni,i);
+    if(p.venc && hoje>p.venc)periodosVencidosGozo=i; else break;
+  }
+  const periodoAtual=periodoPorIndiceFerias(baseIni,1);
+  const antigo=periodoAtual;
+  let proximo=antigo;
+  for(let i=1;i<=20;i++){
+    const p=periodoPorIndiceFerias(baseIni,i);
+    if(p.limite && hoje<=p.limite){proximo=p; break;}
+  }
+  let cod='OK',txt='Férias OK',cls='mod-status-ok';
+  if(periodosAbertos>=3){cod='VENCIDO_2PLUS'; txt=`${periodosAbertos} períodos acumulados`; cls='mod-status-vencido'}
+  else if(periodosAbertos>=2){cod='VENCIDO_2PLUS'; txt='2 períodos acumulados'; cls='mod-status-vencido'}
+  else if(periodosVencidosGozo===1){cod='VENCIDO_1'; txt='1 período vencido'; cls='mod-status-vencido'}
+  else if(antigo.alerta && hoje>=antigo.alerta){cod='ALERTA_15'; txt='Alerta 15 dias'; cls='mod-status-alerta'}
+  return {
+    semAdmissao:false,
+    baseIni,
+    periodoAtual,
+    prazoPrimeiro:antigo.venc,
+    periodosAbertos,
+    periodosVencidos:periodosAbertos,
+    periodosVencidosGozo,
+    limiteCritico:proximo.limite,
+    alertaCritico:proximo.alerta,
+    limiteMaisAntigo:antigo.limite,
+    alertaMaisAntigo:antigo.alerta,
+    cod,txt,cls
+  };
+}
+function statusFerias(f,r){return analiseFerias(f,r)}
+function salvarFeriasTeste(empCod,funCod){const r=feriasRec(empCod,funCod); r.ultimoInicio=document.getElementById(`ferUltIni_${empCod}_${funCod}`)?.value||''; r.ultimoFim=document.getElementById(`ferUltFim_${empCod}_${funCod}`)?.value||''; const obsEl=document.getElementById(`ferObs_${empCod}_${funCod}`); if(obsEl)r.obs=obsEl.value||''; saved()}
+function baixarFeriasTeste(empCod,funCod){const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod)); if(!f)return; const r=feriasRec(empCod,funCod); const a=analiseFerias(f,r); const p=a.periodoAtual; if(!p.ini||!p.fim)return alert('Informe a data de admissão do funcionário primeiro.'); if(!confirm(`Baixar/controlar o período atual?
+
+${fmtDataBR(p.ini)} a ${fmtDataBR(p.fim)}
+
+O próximo período será calculado automaticamente.`))return; r.ultimoInicio=p.ini; r.ultimoFim=p.fim; saved()}
+
+function abrirObsFeriasTeste(empCod,funCod){
+  const emp=state.empresas.find(e=>String(e.codigo)===String(empCod));
+  const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod));
+  const r=feriasRec(empCod,funCod);
+  document.getElementById('feriasObsEmpCod').value=empCod;
+  document.getElementById('feriasObsFunCod').value=funCod;
+  document.getElementById('feriasObsInfo').textContent=emp&&f?`${emp.codigo} - ${emp.nome} | ${f.nome}`:'Funcionário não localizado';
+  document.getElementById('feriasObsTexto').value=r.obs||'';
+  document.getElementById('modalFeriasObsTeste')?.classList.add('open');
+  document.body.classList.add('modal-aberto');
+}
+function fecharObsFeriasTeste(){
+  document.getElementById('modalFeriasObsTeste')?.classList.remove('open');
+  document.body.classList.remove('modal-aberto');
+}
+function salvarObsFeriasTeste(){
+  const empCod=document.getElementById('feriasObsEmpCod')?.value||'';
+  const funCod=document.getElementById('feriasObsFunCod')?.value||'';
+  const r=feriasRec(empCod,funCod);
+  r.obs=document.getElementById('feriasObsTexto')?.value||'';
+  fecharObsFeriasTeste();
+  saved();
+}
+function filtroTxt(id){const el=document.getElementById(id); if(!el)return ''; if(el.tagName==='SELECT'){return el.options[el.selectedIndex]?.text||''} return el.value||''}
+function abrirPDFModuloTeste(titulo,subtitulo,filtros,headers,rows){
+  const dataHora=new Date().toLocaleString('pt-BR');
+  const linhas=rows.length?rows.map(r=>'<tr>'+r.map(c=>`<td>${esc(c||'-')}</td>`).join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'">Nenhum registro encontrado com os filtros selecionados.</td></tr>';
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>
+    @page{size:A4 landscape;margin:10mm}body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:11px}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1B3A6B;padding-bottom:8px;margin-bottom:10px}h1{font-size:20px;color:#1B3A6B;margin:0 0 4px}.muted{color:#667085}.filtros{background:#f8fafc;border:1px solid #d8e0ea;border-radius:8px;padding:8px;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#eef4ff;color:#1B3A6B;text-align:left;font-size:10px;text-transform:uppercase}th,td{border:1px solid #d8e0ea;padding:6px;vertical-align:top}tr:nth-child(even)td{background:#fbfdff}.rodape{margin-top:8px;font-size:10px;color:#667085}.btn{position:fixed;right:12px;top:12px;border:0;background:#1B3A6B;color:white;border-radius:8px;padding:8px 12px;font-weight:700}@media print{.btn{display:none}}
+  </style></head><body><button class="btn" onclick="window.print()">Imprimir / PDF</button><div class="top"><div><h1>${esc(titulo)}</h1><div class="muted">${esc(subtitulo||'')}</div></div><div class="muted">Gerado em ${esc(dataHora)}</div></div><div class="filtros"><b>Filtros:</b> ${esc(filtros||'Todos')}</div><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${linhas}</tbody></table><div class="rodape">Relatório gerado pelo sistema. Não altera dados do fechamento mensal.</div><script>setTimeout(()=>window.print(),400)<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w)return alert('O navegador bloqueou a janela do PDF. Libere pop-ups e tente novamente.');
+  w.document.write(html); w.document.close();
+}
+function gerarPDFASOTeste(){
+  const empF=document.getElementById('asoEmpFiltro')?.value||'';
+  const stF=document.getElementById('asoStatusFiltro')?.value||'';
+  const busca=(document.getElementById('asoBusca')?.value||'').toLowerCase();
+  const rows=[];
+  funcionariosOperacionaisTeste().forEach(({e,f})=>{
+    if(empF&&String(e.codigo)!==String(empF))return;
+    const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao].join(' ').toLowerCase();
+    if(busca&&!txt.includes(busca))return;
+    const r=asoRec(e.codigo,f.codigo); const venc=addMesesISO(r.ultimo,r.prazo||12); const st=statusVencimento(venc);
+    if(stF&&st.cod!==stF)return;
+    rows.push([`${f.codigo||''} - ${f.nome||''}`,`${e.codigo} - ${e.nome}`,f.funcao||'',fmtDataBR(r.ultimo)||'-',`${r.prazo||12} meses`,fmtDataBR(venc)||'-',st.txt,st.dias===null?'-':st.dias+' dias',r.obs||'-']);
+  });
+  abrirPDFModuloTeste('Relatório de ASO Periódicos','Controle dos exames periódicos dos funcionários',`Empresa: ${filtroTxt('asoEmpFiltro')||'Todas'} | Status: ${filtroTxt('asoStatusFiltro')||'Todos'} | Busca: ${document.getElementById('asoBusca')?.value||'-'}`,['Funcionário','Empresa','Função','Último ASO','Prazo','Vencimento','Status','Dias','Observação'],rows);
+}
+function gerarPDFLaudosTeste(){
+  const empF=document.getElementById('laudoEmpFiltro')?.value||'';
+  const tipoF=document.getElementById('laudoTipoFiltro')?.value||'';
+  const stF=document.getElementById('laudoStatusFiltro')?.value||'';
+  const busca=(document.getElementById('laudoBusca')?.value||'').toLowerCase();
+  const rows=[];
+  (state.laudos||[]).forEach(r=>{
+    const e=state.empresas.find(x=>String(x.codigo)===String(r.empCod));
+    if(!e||!empresaAtivaNaCompetencia(e,comp()))return;
+    if(empF&&String(r.empCod)!==String(empF))return;
+    if(tipoF&&String(r.tipo)!==String(tipoF))return;
+    const venc=addMesesISO(r.ultimo,r.prazo||12); const st=statusVencimento(venc);
+    if(stF&&st.cod!==stF)return;
+    const txt=[e.nome,e.codigo,r.tipo,r.grauRisco,r.obs].join(' ').toLowerCase();
+    if(busca&&!txt.includes(busca))return;
+    rows.push([`${e.codigo} - ${e.nome}`,r.tipo||'-',r.grauRisco||'Não informado',fmtDataBR(r.ultimo)||'-',`${r.prazo||12} meses`,fmtDataBR(venc)||'-',st.txt,st.dias===null?'-':st.dias+' dias',r.obs||'-']);
+  });
+  abrirPDFModuloTeste('Relatório de Laudos SST','Controle de PCMSO, PGR, LTCAT e laudos SST',`Empresa: ${filtroTxt('laudoEmpFiltro')||'Todas'} | Tipo: ${filtroTxt('laudoTipoFiltro')||'Todos'} | Status: ${filtroTxt('laudoStatusFiltro')||'Todos'} | Busca: ${document.getElementById('laudoBusca')?.value||'-'}`,['Empresa','Tipo','Grau de risco','Último laudo','Prazo','Vencimento','Status','Dias','Observação'],rows);
+}
+function gerarPDFFeriasTeste(){
+  const empF=document.getElementById('feriasEmpFiltro')?.value||'';
+  const stF=document.getElementById('feriasStatusFiltro')?.value||'';
+  const busca=(document.getElementById('feriasBusca')?.value||'').toLowerCase();
+  const rows=[];
+  funcionariosOperacionaisTeste().forEach(({e,f})=>{
+    if(empF&&String(e.codigo)!==String(empF))return;
+    const r=feriasRec(e.codigo,f.codigo); const a=analiseFerias(f,r);
+    if(stF&&a.cod!==stF)return;
+    const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao].join(' ').toLowerCase();
+    if(busca&&!txt.includes(busca))return;
+    const p=a.periodoAtual||{};
+    rows.push([`${f.codigo||''} - ${f.nome||''}`,`${e.codigo} - ${e.nome}`,fmtDataBR(f.admissao)||'-',`${fmtDataBR(r.ultimoInicio)||'-'} a ${fmtDataBR(r.ultimoFim)||'-'}`,`${fmtDataBR(p.ini)||'-'} a ${fmtDataBR(p.fim)||'-'}`,`${fmtDataBR(a.prazoPrimeiro)||'-'} | seguro: ${fmtDataBR(a.limiteMaisAntigo)||'-'} | alerta: ${fmtDataBR(a.alertaMaisAntigo)||'-'}`,String(a.periodosAbertos||0),a.txt,r.obs||'-']);
+  });
+  abrirPDFModuloTeste('Relatório de Férias','Controle de períodos aquisitivos e vencimentos',`Empresa: ${filtroTxt('feriasEmpFiltro')||'Todas'} | Status: ${filtroTxt('feriasStatusFiltro')||'Todos'} | Busca: ${document.getElementById('feriasBusca')?.value||'-'}`,['Funcionário','Empresa','Admissão','Último período baixado','Período em aberto','Prazo/limite/alerta','Períodos em aberto','Status','Observação'],rows);
+}
+function renderFerias(){
+  popularSelectsModulos();
+  const empF=feriasEmpFiltro?.value||'';
+  const stF=feriasStatusFiltro?.value||'';
+  const busca=(feriasBusca?.value||'').toLowerCase();
+  let rows=[]; let k={total:0,ok:0,alerta:0,v1:0,v2:0};
+  funcionariosOperacionaisTeste().forEach(({e,f})=>{
+    if(empF&&String(e.codigo)!==String(empF))return;
+    const r=feriasRec(e.codigo,f.codigo);
+    const a=analiseFerias(f,r);
+    if(stF&&a.cod!==stF)return;
+    const txt=[e.nome,e.codigo,f.nome,f.codigo,f.funcao].join(' ').toLowerCase();
+    if(busca&&!txt.includes(busca))return;
+    k.total++; if(a.cod==='OK')k.ok++; if(a.cod==='ALERTA_15')k.alerta++; if(a.cod==='VENCIDO_1')k.v1++; if(a.cod==='VENCIDO_2PLUS')k.v2++;
+    rows.push({e,f,r,a})
+  });
+  if(feriasTotal){feriasTotal.textContent=k.total; feriasOk.textContent=k.ok; if(typeof feriasAlerta!=='undefined'&&feriasAlerta)feriasAlerta.textContent=k.alerta; feriasVenc1.textContent=k.v1; if(typeof feriasVenc2!=='undefined'&&feriasVenc2)feriasVenc2.textContent=k.v2}
+  const tab=document.getElementById('tabFerias'); if(!tab)return;
+  tab.innerHTML='<thead><tr><th>Funcionário</th><th>Empresa</th><th>Admissão</th><th>Último período baixado</th><th>Período mais antigo em aberto</th><th>Prazo de gozo</th><th>Períodos em aberto</th><th>Status geral</th><th>Obs.</th><th>Ações</th></tr></thead><tbody>'+rows.map(x=>{const id=`${x.e.codigo}_${x.f.codigo}`; const p=x.a.periodoAtual||{}; const qtd=x.a.periodosAbertos||0; const abertoBadge=qtd>0?`<span class="badge ${qtd>=2?'mod-status-vencido':'mod-status-alerta'}">${esc(qtd)} ${qtd===1?'período':'períodos'}</span>`:`<span class="badge mod-status-ok">0</span>`; const prazoOld=x.a.prazoPrimeiro||''; const limiteOld=x.a.limiteMaisAntigo||''; return `<tr><td><b>${esc(x.f.nome)}</b><div class="mod-mini">${esc(x.f.funcao||'')}</div></td><td><b>${esc(x.e.codigo)} - ${esc(x.e.nome)}</b></td><td>${esc(fmtDataBR(x.f.admissao)||'-')}</td><td><div class="mod-actions-inline"><input id="ferUltIni_${id}" type="date" value="${esc(x.r.ultimoInicio||'')}" title="Início do último período baixado"><input id="ferUltFim_${id}" type="date" value="${esc(x.r.ultimoFim||'')}" title="Fim do último período baixado"></div><div class="mod-mini">preencha somente se já houve férias controladas</div></td><td>${esc(fmtDataBR(p.ini)||'-')} a ${esc(fmtDataBR(p.fim)||'-')}</td><td>${esc(fmtDataBR(prazoOld)||'-')}<div class="mod-mini">limite seguro do período: ${esc(fmtDataBR(limiteOld)||'-')}</div><div class="mod-mini">alerta anterior: ${esc(fmtDataBR(x.a.alertaMaisAntigo)||'-')}</div></td><td>${abertoBadge}</td><td><span class="badge ${x.a.cls}">${esc(x.a.txt)}</span></td><td><button class="btn small out" onclick="abrirObsFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">${x.r.obs?'Ler':'-'}</button></td><td><div class="action-line"><button class="btn small pri" onclick="salvarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Salvar</button><button class="btn small green" onclick="baixarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Baixar período</button></div></td></tr>`}).join('')+'</tbody>'
+}
+
+function renderAll(){renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
 init();
 </script>
 </body>
