@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   crossorigin="anonymous"></script>
-<title>Controle de Fechamento da Folha — v2.4.1 | Melhorias travadas | 2026-05-19</title>
+<title>Controle de Fechamento da Folha — v2.8 | Melhorias travadas | 2026-06-17</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
 *{box-sizing:border-box}
@@ -70,6 +70,7 @@ tr:hover td{background:#fbfdff}
 .sind-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .sind-info{border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fafc}
 .sind-info b{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px}
+.sind-resumo-scroll{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;margin-top:4px}
 .link-btn{border:none;background:transparent;color:var(--blue);font-weight:800;text-decoration:underline;cursor:pointer;font-size:inherit}
 .tri-obs{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;border:none;border-radius:50%;width:22px;height:22px;background:#fef3c7;color:#92400e;font-weight:900;cursor:pointer}
 .tri-obs:hover{background:#fde68a}
@@ -225,6 +226,7 @@ body.modal-aberto{overflow:hidden}
 <button data-sec="relatorio">📤 Relatório de lançamento</button>
 <button data-sec="empresas">🏢 Empresas/Códigos</button>
 <button data-sec="sindicatos">🤝 Sindicatos</button>
+<button data-sec="guias">🧾 Guias</button>
 <button data-sec="asos">🩺 ASO Periódicos</button>
 <button data-sec="laudos">📑 Laudos SST</button>
 <button data-sec="ferias">🌴 Férias</button>
@@ -353,8 +355,13 @@ body.modal-aberto{overflow:hidden}
     <div><label>Data-base</label><select id="sindDataBaseCad"><option value="">Selecione...</option><option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option></select></div>
     <div><label>Benefício</label><select id="sindBeneficioCad"><option>Normal</option><option>Especial</option><option>Não possui</option></select></div>
     <div class="sind-obs"><label>Observações</label><input id="sindObsCad" placeholder="Convenção, benefício, boleto, particularidades..."></div>
+    <div><label>Abre domingos/feriados?</label><select id="sindDomingoFeriadoCad"><option value="">Não informado</option><option>Sim</option><option>Não</option></select></div>
+    <div class="sind-anexos"><label>📎 Liberação domingo/feriado (anexo)</label><input id="sindLiberacaoCad" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="addSindicatoLiberacao(this.files);this.value=''">
+      <div id="sindLiberacaoLista" class="anexo-lista">Nenhum documento anexado.</div>
+      <p class="muted">Ex.: autorização do sindicato para trabalho em domingos e feriados.</p>
+    </div>
     <div class="sind-resumo"><label>Resumo da convenção / circular</label><textarea id="sindResumoConvencaoCad" class="panel-notes" placeholder="Resumo dos pontos importantes: piso salarial, reajuste, benefícios, contribuições, horas extras, banco de horas, feriados, prazos e observações do DP."></textarea></div>
-    <div><label>Tipo de anexo</label><select id="sindTipoAnexoCad"><option>Convenção coletiva</option><option>Circular</option><option>Acordo coletivo</option><option>Outro documento</option></select></div>
+    <div><label>Tipo de anexo</label><select id="sindTipoAnexoCad"><option>Convenção coletiva</option><option>Circular</option><option>Resumo</option><option>Acordo coletivo</option><option>Outro documento</option></select></div>
     <div class="sind-anexos"><label>Anexar PDF / circular</label><input id="sindAnexosCad" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onchange="addSindicatoAnexos(this.files);this.value=''">
       <div id="sindAnexosLista" class="anexo-lista">Nenhum documento anexado.</div>
       <p class="muted">Dica: para PDFs grandes, use um arquivo compacto ou cole o resumo no campo acima para não pesar o backup do navegador.</p>
@@ -368,6 +375,47 @@ body.modal-aberto{overflow:hidden}
   <div class="row"><div><label>Buscar sindicato</label><input id="sindBusca" placeholder="Nome, contato, data-base..." oninput="renderSindicatos()"></div></div>
   <div class="table-wrap"><table id="tabSindicatos"></table></div>
 </div>
+</section>
+
+<section id="guias" class="section">
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">🧾 Controle de Guias <span class="badge ok">Mensal</span></h3>
+    <p class="muted">Controle, por empresa e por competência, quais guias precisam ser geradas no sindicato, se foram enviadas ao cliente e se já foram pagas.</p>
+    <div class="row">
+      <div><label>Competência</label><input id="guiasComp" type="month" onchange="renderGuias()"></div>
+      <div><label>Filtrar empresa</label><select id="guiasEmpFiltro" onchange="renderGuias()"><option value="">Todas</option></select></div>
+      <div><label>Status</label><select id="guiasStatusFiltro" onchange="renderGuias()"><option value="">Todos</option><option>A gerar</option><option>Enviada</option><option>Paga</option><option>Atrasada</option></select></div>
+      <div><label>Ação</label><div class="actions"><button class="btn out" onclick="gerarPDFGuiasGerar()">📄 PDF: a gerar</button><button class="btn pri" onclick="gerarPDFGuiasSituacao()">📄 PDF: situação</button></div></div>
+    </div>
+    <div class="mod-grid" style="margin-top:12px">
+      <div class="mod-kpi"><b id="guiaTotal">0</b><span>Total</span></div>
+      <div class="mod-kpi"><b id="guiaGerar">0</b><span>A gerar</span></div>
+      <div class="mod-kpi"><b id="guiaEnviada">0</b><span>Enviadas</span></div>
+      <div class="mod-kpi"><b id="guiaPaga">0</b><span>Pagas</span></div>
+      <div class="mod-kpi"><b id="guiaAtrasada">0</b><span>Atrasadas</span></div>
+    </div>
+    <div class="table-wrap" style="margin-top:12px"><table id="tabGuias"></table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">Empresas no controle de guias</h3>
+    <p class="muted">Adicione apenas as empresas que possuem guias. Só as empresas adicionadas aqui aparecem no controle acima. Marque quais guias cada empresa possui.</p>
+    <div class="row">
+      <div class="sind-razao"><label>Adicionar empresa (do cadastro de empresas)</label><select id="guiaEmpAdd"></select></div>
+      <div><label>&nbsp;</label><button class="btn pri" onclick="guiaAddEmpresa()">+ Incluir empresa</button></div>
+    </div>
+    <div id="guiaEmpresasConfig" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--pri);margin-top:0">Tipos de guia</h3>
+    <p class="muted">Tipos disponíveis para marcar nas empresas. Você pode cadastrar novos tipos.</p>
+    <div class="row">
+      <div class="sind-nome"><label>Novo tipo de guia</label><input id="guiaTipoNovo" placeholder="Ex.: Guia do plano de saúde"></div>
+      <div><label>&nbsp;</label><button class="btn pri" onclick="guiaAddTipo()">+ Adicionar tipo</button></div>
+    </div>
+    <div id="guiaTiposLista" style="margin-top:12px">Nenhum tipo cadastrado.</div>
+  </div>
 </section>
 
 <section id="funcionarios" class="section">
@@ -758,6 +806,61 @@ body.modal-aberto{overflow:hidden}
   </div>
 </div>
 
+<!-- MODAL EDIÇÃO SINDICATO v2.7 -->
+<div id="modalSindEdit" class="overlay-sind">
+  <div class="sind-modal" style="max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h3 id="modalSindEditTitulo">Editar sindicato</h3>
+      <button class="btn red" onclick="fecharEditarSindicato()">Fechar</button>
+    </div>
+    <input type="hidden" id="sindEditIdCampo">
+    <div class="row" style="margin-top:12px">
+      <div class="sind-nome"><label>Nome do sindicato</label><input id="sindNomeEdit"></div>
+      <div class="sind-razao"><label>Razão social do sindicato</label><input id="sindRazaoEdit"></div>
+      <div><label>CNPJ</label><input id="sindCnpjEdit"></div>
+      <div><label>Nome do contato</label><input id="sindContatoNomeEdit"></div>
+      <div><label>Telefone/WhatsApp</label><input id="sindContatoEdit"></div>
+      <div><label>E-mail</label><input id="sindEmailEdit"></div>
+      <div><label>Data-base</label><select id="sindDataBaseEdit"><option value="">Selecione...</option><option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option></select></div>
+      <div><label>Benefício</label><select id="sindBeneficioEdit"><option>Normal</option><option>Especial</option><option>Não possui</option></select></div>
+      <div><label>Abre domingos/feriados?</label><select id="sindDomingoFeriadoEdit"><option value="">Não informado</option><option>Sim</option><option>Não</option></select></div>
+      <div class="sind-obs"><label>Observações</label><input id="sindObsEdit"></div>
+      <div class="sind-resumo"><label>Resumo da convenção / circular</label><textarea id="sindResumoConvencaoEdit" class="panel-notes"></textarea></div>
+      <div><label>Tipo de anexo</label><select id="sindTipoAnexoEdit"><option>Convenção coletiva</option><option>Circular</option><option>Resumo</option><option>Acordo coletivo</option><option>Outro documento</option></select></div>
+      <div class="sind-anexos"><label>Anexar PDF / circular</label><input id="sindAnexosEdit" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onchange="addSindicatoAnexosEdit(this.files);this.value=''">
+        <div id="sindAnexosListaEdit" class="anexo-lista">Nenhum documento anexado.</div>
+      </div>
+      <div class="sind-anexos"><label>📎 Liberação domingo/feriado (anexo)</label><input id="sindLiberacaoEdit" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="addSindicatoLiberacaoEdit(this.files);this.value=''">
+        <div id="sindLiberacaoListaEdit" class="anexo-lista">Nenhum documento anexado.</div>
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn out" onclick="fecharEditarSindicato()">Cancelar</button>
+      <button class="btn pri" onclick="salvarEditarSindicato()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESUMO COMPLETO / BENEFÍCIOS v2.7 -->
+<div id="modalSindBeneficios" class="overlay-sind">
+  <div class="sind-modal" style="max-height:88vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h3 id="modalSindBenefTitulo">Resumo completo</h3>
+      <button class="btn red" onclick="fecharBeneficiosSind()">Fechar</button>
+    </div>
+    <input type="hidden" id="sindBenefIdCampo">
+    <div class="sind-info" style="margin-top:12px"><b>Resumo da convenção / circular</b><div id="sindBenefResumoTexto" class="sind-resumo-scroll" style="white-space:pre-wrap"></div></div>
+    <h4 style="color:var(--pri);margin:18px 0 6px">Itens de benefício</h4>
+    <p class="muted" style="margin-top:0">Cadastre os benefícios (vale-refeição, cesta básica, plano odontológico etc.). Use a observação de cada item para registrar valores, regras e as diferenças por empresa.</p>
+    <div class="row">
+      <div class="sind-nome"><label>Item</label><input id="sindBenefNome" placeholder="Ex.: Vale-refeição"></div>
+      <div class="sind-resumo"><label>Observação</label><textarea id="sindBenefObs" class="panel-notes" placeholder="Valor, regra, quais empresas concedem, diferenças entre elas..."></textarea></div>
+      <div><label>&nbsp;</label><button class="btn pri" id="sindBenefBtnAdd" onclick="addBeneficioSind()">+ Adicionar item</button></div>
+    </div>
+    <div id="sindBenefLista" class="anexo-lista" style="margin-top:12px">Nenhum item cadastrado.</div>
+  </div>
+</div>
+
 <!-- MODAL EDIÇÃO EMPRESA v2.4 — HTML próprio, sem clonar form -->
 <div id="modalEmpresa" class="overlay-emp" onclick="if(event.target===this)fecharModalEmpresa()">
   <div class="emp-modal-box">
@@ -966,7 +1069,7 @@ function normalizarState(s){
   if(!Array.isArray(s.asos))s.asos=[]
   if(!Array.isArray(s.laudos))s.laudos=[]
   if(!Array.isArray(s.ferias))s.ferias=[]
-  s.sindicatos=s.sindicatos.map(x=>({...x,razao:x.razao||"",cnpj:x.cnpj||"",resumoConvencao:x.resumoConvencao||"",anexos:Array.isArray(x.anexos)?x.anexos:[]}))
+  s.sindicatos=s.sindicatos.map(x=>({...x,id:x.id||(Date.now()+Math.random()),razao:x.razao||"",cnpj:x.cnpj||"",resumoConvencao:x.resumoConvencao||"",anexos:Array.isArray(x.anexos)?x.anexos:[],abreDomingoFeriado:x.abreDomingoFeriado||"",anexoLiberacao:x.anexoLiberacao||null,beneficios:Array.isArray(x.beneficios)?x.beneficios:[]}))
   s.eventos=s.eventos.map(e=>({...e,tipo:e.tipo||"Valor"}))
   const cods=new Set(s.eventos.map(e=>String(e.codigo)))
   ;(s.empresas||[]).forEach(emp=>{
@@ -1002,7 +1105,7 @@ function normalizarState(s){
   ;(s.empresas||[]).forEach(emp=>{
     const nome=String(emp.sindicato||"").trim()
     if(nome&&!sindSet.has(nome)){
-      s.sindicatos.push({id:Date.now()+Math.random(),nome,contatoNome:"",contato:"",email:"",dataBase:emp.dataBase||"",beneficio:"Normal",obs:"Criado automaticamente a partir do cadastro da empresa.",resumoConvencao:"",anexos:[]})
+      s.sindicatos.push({id:Date.now()+Math.random(),nome,contatoNome:"",contato:"",email:"",dataBase:emp.dataBase||"",beneficio:"Normal",obs:"Criado automaticamente a partir do cadastro da empresa.",resumoConvencao:"",anexos:[],abreDomingoFeriado:"",anexoLiberacao:null,beneficios:[]})
       sindSet.add(nome)
     }
   })
@@ -1631,7 +1734,7 @@ async function iniciarApp(){
   emp2.onchange=()=>{emp1.value=emp2.value;renderAll()};
   popularEmpresas(); facRenderLinhas(); renderAll();
 }
-function show(id){document.querySelectorAll(".section").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===id)); const t={painel:["Painel de controle","Resumo geral e alertas."],fechamento:["Fechamento mensal","Lançar, conferir e travar eventos por funcionário."],relatorio:["Relatório de lançamento","Exportação para digitar no outro programa."],empresas:["Empresas/Códigos","Empresas, sindicatos e eventos permitidos por empresa."],sindicatos:["Sindicatos","Cadastro de sindicato, contato, data-base e benefícios."],funcionarios:["Funcionários","Cadastro, observações e eventos vinculados ao funcionário."],eventos:["Códigos/Eventos","Eventos permitidos para lançamento."],regras:["Regras especiais","Horas fixas por dia da semana — cálculo automático por competência."],asos:["ASO Periódicos","Controle de vencimentos dos exames periódicos."],laudos:["Laudos SST","Controle de PCMSO, PGR, LTCAT e laudos SST."],ferias:["Férias","Controle de períodos aquisitivos e vencimentos."],facilitador:["Facilitador","Ferramentas auxiliares do DP."],backup:["Backup","Salvar e restaurar dados locais."]}[id]; titulo.textContent=t[0]; sub.textContent=t[1]; renderAll()}
+function show(id){document.querySelectorAll(".section").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===id)); const t={painel:["Painel de controle","Resumo geral e alertas."],fechamento:["Fechamento mensal","Lançar, conferir e travar eventos por funcionário."],relatorio:["Relatório de lançamento","Exportação para digitar no outro programa."],empresas:["Empresas/Códigos","Empresas, sindicatos e eventos permitidos por empresa."],sindicatos:["Sindicatos","Cadastro de sindicato, contato, data-base e benefícios."],guias:["Guias","Controle mensal de guias por empresa: geração, envio e pagamento."],funcionarios:["Funcionários","Cadastro, observações e eventos vinculados ao funcionário."],eventos:["Códigos/Eventos","Eventos permitidos para lançamento."],regras:["Regras especiais","Horas fixas por dia da semana — cálculo automático por competência."],asos:["ASO Periódicos","Controle de vencimentos dos exames periódicos."],laudos:["Laudos SST","Controle de PCMSO, PGR, LTCAT e laudos SST."],ferias:["Férias","Controle de períodos aquisitivos e vencimentos."],facilitador:["Facilitador","Ferramentas auxiliares do DP."],backup:["Backup","Salvar e restaurar dados locais."]}[id]; titulo.textContent=t[0]; sub.textContent=t[1]; renderAll()}
 function flatFuncs(){let a=[]; const c=comp(); empresasAtivas().forEach(e=>(e.funcionarios||[]).forEach(f=>{if(!funcionarioAtivoNaCompetencia(f,c))return; a.push({e,f,fs:fs(e,f)})})); return a}
 function filtrados(){
   const sec=document.querySelector(".section.active")?.id||"painel"
@@ -2274,6 +2377,13 @@ let funEventoTemp=[]
 let funEventoEditIndex=null
 let funAutoEditIndex=null
 let sindicatoAnexosTemp=[]
+let sindLiberacaoTemp=null
+let sindEditAnexosTemp=[]
+let sindEditLiberacaoTemp=null
+let sindEditIdAtual=null
+let sindBeneficiosTemp=[]
+let sindBeneficiosSindId=null
+let sindBenefEditIndex=null
 let empresaNaoContribuiSindicatoObsTemp=""
 let empSindicatosAdicTemp=[]
 let meSindicatosAdicTemp=[]
@@ -2334,6 +2444,119 @@ function addSindicatoAnexos(files){
     reader.readAsDataURL(file)
   })
 }
+/* ===== v2.7 — anexo único de liberação domingo/feriado (cadastro) ===== */
+function anexoLinhaSindHtml(a,removeJs){
+  return `<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><div class="anexo-links"><a class="btn small out" href="${esc(a.dataUrl||"#")}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a>${removeJs?`<button class="btn small red" onclick="${removeJs}">Remover</button>`:""}</div></div>`
+}
+function renderSindicatoLiberacaoTemp(){
+  const box=document.getElementById("sindLiberacaoLista"); if(!box)return
+  box.innerHTML=sindLiberacaoTemp?anexoLinhaSindHtml(sindLiberacaoTemp,"sindLiberacaoTemp=null;renderSindicatoLiberacaoTemp()"):"Nenhum documento anexado."
+}
+function addSindicatoLiberacao(files){
+  const file=Array.from(files||[])[0]; if(!file)return
+  if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o arquivo.`);return}
+  const reader=new FileReader()
+  reader.onload=()=>{sindLiberacaoTemp={id:Date.now()+Math.random(),tipo:"Liberação domingo/feriado",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderSindicatoLiberacaoTemp()}
+  reader.readAsDataURL(file)
+}
+/* ===== v2.7 — anexos do modal de edição ===== */
+function renderSindEditAnexos(){
+  const box=document.getElementById("sindAnexosListaEdit"); if(!box)return
+  box.innerHTML=sindEditAnexosTemp.length?sindEditAnexosTemp.map((a,i)=>anexoLinhaSindHtml(a,`sindEditAnexosTemp.splice(${i},1);renderSindEditAnexos()`)).join(""):"Nenhum documento anexado."
+}
+function addSindicatoAnexosEdit(files){
+  const lista=Array.from(files||[]); if(!lista.length)return
+  lista.forEach(file=>{
+    if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o PDF ou salve um resumo no campo de texto.`);return}
+    const reader=new FileReader()
+    reader.onload=()=>{sindEditAnexosTemp.push({id:Date.now()+Math.random(),tipo:document.getElementById("sindTipoAnexoEdit")?.value||"Documento",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()});renderSindEditAnexos()}
+    reader.readAsDataURL(file)
+  })
+}
+function renderSindEditLiberacao(){
+  const box=document.getElementById("sindLiberacaoListaEdit"); if(!box)return
+  box.innerHTML=sindEditLiberacaoTemp?anexoLinhaSindHtml(sindEditLiberacaoTemp,"sindEditLiberacaoTemp=null;renderSindEditLiberacao()"):"Nenhum documento anexado."
+}
+function addSindicatoLiberacaoEdit(files){
+  const file=Array.from(files||[])[0]; if(!file)return
+  if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o arquivo.`);return}
+  const reader=new FileReader()
+  reader.onload=()=>{sindEditLiberacaoTemp={id:Date.now()+Math.random(),tipo:"Liberação domingo/feriado",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderSindEditLiberacao()}
+  reader.readAsDataURL(file)
+}
+/* ===== v2.7 — abrir/salvar edição do sindicato em modal ===== */
+function abrirEditarSindicato(i){
+  const s=state.sindicatos[i]; if(!s)return
+  sindEditIdAtual=s.id
+  document.getElementById("sindEditIdCampo").value=s.id
+  document.getElementById("modalSindEditTitulo").textContent="Editar sindicato — "+(s.nome||"")
+  sindNomeEdit.value=s.nome||""; sindRazaoEdit.value=s.razao||""; sindCnpjEdit.value=s.cnpj||""
+  sindContatoNomeEdit.value=s.contatoNome||""; sindContatoEdit.value=s.contato||""; sindEmailEdit.value=s.email||""
+  sindDataBaseEdit.value=s.dataBase||""; sindBeneficioEdit.value=s.beneficio||"Normal"
+  sindDomingoFeriadoEdit.value=s.abreDomingoFeriado||""
+  sindObsEdit.value=s.obs||""; sindResumoConvencaoEdit.value=s.resumoConvencao||""
+  sindEditAnexosTemp=Array.isArray(s.anexos)?clone(s.anexos):[]; renderSindEditAnexos()
+  sindEditLiberacaoTemp=s.anexoLiberacao?clone(s.anexoLiberacao):null; renderSindEditLiberacao()
+  modalSindEdit.classList.add("open")
+}
+function fecharEditarSindicato(){modalSindEdit.classList.remove("open")}
+function salvarEditarSindicato(){
+  const s=state.sindicatos.find(x=>String(x.id)===String(sindEditIdAtual)); if(!s)return alert("Sindicato não encontrado.")
+  const nome=sindNomeEdit.value.trim(); if(!nome)return alert("Informe o nome do sindicato.")
+  s.nome=nome; s.razao=sindRazaoEdit.value.trim(); s.cnpj=sindCnpjEdit.value.trim()
+  s.contatoNome=sindContatoNomeEdit.value.trim(); s.contato=sindContatoEdit.value.trim(); s.email=sindEmailEdit.value.trim()
+  s.dataBase=normalizarMesExtenso(sindDataBaseEdit.value); s.beneficio=sindBeneficioEdit.value
+  s.abreDomingoFeriado=sindDomingoFeriadoEdit.value||""
+  s.obs=sindObsEdit.value.trim(); s.resumoConvencao=(sindResumoConvencaoEdit.value||"").trim()
+  s.anexos=Array.isArray(sindEditAnexosTemp)?sindEditAnexosTemp.slice():[]
+  s.anexoLiberacao=sindEditLiberacaoTemp||null
+  if(!Array.isArray(s.beneficios))s.beneficios=[]
+  state.sindicatos.sort((a,b)=>a.nome.localeCompare(b.nome))
+  fecharEditarSindicato(); saved()
+}
+/* ===== v2.7 — resumo completo e itens de benefício ===== */
+function abrirBeneficiosSind(id){
+  const s=state.sindicatos.find(x=>String(x.id)===String(id)); if(!s)return
+  sindBeneficiosSindId=s.id
+  sindBeneficiosTemp=Array.isArray(s.beneficios)?clone(s.beneficios):[]
+  sindBenefEditIndex=null
+  document.getElementById("modalSindBenefTitulo").textContent="Resumo completo — "+(s.nome||"Sindicato")
+  document.getElementById("sindBenefResumoTexto").textContent=s.resumoConvencao||"Nenhum resumo cadastrado."
+  document.getElementById("sindBenefNome").value=""; document.getElementById("sindBenefObs").value=""
+  document.getElementById("sindBenefBtnAdd").textContent="+ Adicionar item"
+  renderBeneficiosSind()
+  modalSindBeneficios.classList.add("open")
+}
+function fecharBeneficiosSind(){modalSindBeneficios.classList.remove("open")}
+function renderBeneficiosSind(){
+  const box=document.getElementById("sindBenefLista"); if(!box)return
+  box.innerHTML=sindBeneficiosTemp.length?sindBeneficiosTemp.map((b,i)=>`<div class="anexo-item"><div style="flex:1"><b>${esc(b.nome||"Item")}</b><br><span class="muted" style="white-space:pre-wrap">${esc(b.obs||"")}</span></div><div class="anexo-links"><button class="btn small out" onclick="editarBeneficioSind(${i})">Alterar</button><button class="btn small red" onclick="removerBeneficioSind(${i})">Remover</button></div></div>`).join(""):"Nenhum item cadastrado."
+}
+function addBeneficioSind(){
+  const nome=document.getElementById("sindBenefNome").value.trim()
+  const obs=document.getElementById("sindBenefObs").value.trim()
+  if(!nome)return alert("Informe o nome do item de benefício.")
+  if(sindBenefEditIndex!==null){sindBeneficiosTemp[sindBenefEditIndex]={...sindBeneficiosTemp[sindBenefEditIndex],nome,obs}; sindBenefEditIndex=null}
+  else{sindBeneficiosTemp.push({id:Date.now()+Math.random(),nome,obs})}
+  document.getElementById("sindBenefNome").value=""; document.getElementById("sindBenefObs").value=""
+  document.getElementById("sindBenefBtnAdd").textContent="+ Adicionar item"
+  salvarBeneficiosSind(); renderBeneficiosSind()
+}
+function editarBeneficioSind(i){
+  const b=sindBeneficiosTemp[i]; if(!b)return
+  document.getElementById("sindBenefNome").value=b.nome||""; document.getElementById("sindBenefObs").value=b.obs||""
+  document.getElementById("sindBenefBtnAdd").textContent="Salvar item"
+  sindBenefEditIndex=i
+}
+function removerBeneficioSind(i){
+  if(!confirm("Remover este item de benefício?"))return
+  sindBeneficiosTemp.splice(i,1); if(sindBenefEditIndex===i)sindBenefEditIndex=null
+  salvarBeneficiosSind(); renderBeneficiosSind()
+}
+function salvarBeneficiosSind(){
+  const s=state.sindicatos.find(x=>String(x.id)===String(sindBeneficiosSindId)); if(!s)return
+  s.beneficios=sindBeneficiosTemp.slice(); save()
+}
 function salvarSindicatoCadastro(){
   const nome=sindNomeCad.value.trim()
   if(!nome)return alert("Informe o nome do sindicato.")
@@ -2350,9 +2573,14 @@ function salvarSindicatoCadastro(){
   s.obs=sindObsCad.value.trim()
   s.resumoConvencao=(document.getElementById("sindResumoConvencaoCad")?.value||"").trim()
   s.anexos=Array.isArray(sindicatoAnexosTemp)?sindicatoAnexosTemp.slice():[]
+  s.abreDomingoFeriado=document.getElementById("sindDomingoFeriadoCad")?.value||""
+  s.anexoLiberacao=sindLiberacaoTemp||null
+  if(!Array.isArray(s.beneficios))s.beneficios=[]
   state.sindicatos.sort((a,b)=>a.nome.localeCompare(b.nome))
   sindNomeCad.value=sindRazaoCad.value=sindCnpjCad.value=sindContatoNomeCad.value=sindContatoCad.value=sindEmailCad.value=sindDataBaseCad.value=sindObsCad.value=""
   if(document.getElementById("sindResumoConvencaoCad"))sindResumoConvencaoCad.value=""
+  if(document.getElementById("sindDomingoFeriadoCad"))sindDomingoFeriadoCad.value=""
+  sindLiberacaoTemp=null; renderSindicatoLiberacaoTemp()
   sindicatoAnexosTemp=[]; renderSindicatoAnexosTemp()
   sindBeneficioCad.value="Normal"
   saved()
@@ -2368,7 +2596,7 @@ function renderSindicatos(){
   if(typeof tabSindicatos==="undefined")return
   const b=(document.getElementById("sindBusca")?.value||"").toLowerCase()
   const lista=(state.sindicatos||[]).filter(s=>!b||[s.nome,s.razao,s.cnpj,s.contatoNome,s.contato,s.email,s.dataBase,s.beneficio,s.obs,s.resumoConvencao,(s.anexos||[]).map(a=>a.nome).join(" ")].join(" ").toLowerCase().includes(b))
-  tabSindicatos.innerHTML='<thead><tr><th>Sindicato</th><th>Contato</th><th>E-mail</th><th>Data-base</th><th>Benefício</th><th>Anexos</th><th>Resumo</th><th>Ação</th></tr></thead><tbody>'+lista.map(s=>{const i=state.sindicatos.indexOf(s);return `<tr><td><button class="link-btn" onclick="abrirSindicato('${esc(s.nome).replaceAll("'","&#39;")}')">${esc(s.nome)}</button></td><td>${esc(s.contatoNome||"")}<br><span class="muted">${esc(s.contato||"")}</span></td><td>${esc(s.email||"")}</td><td>${esc(s.dataBase||"")}</td><td>${esc(s.beneficio||"")}</td><td>${(s.anexos||[]).length}</td><td>${s.resumoConvencao?'<span class="badge ok">Com resumo</span>':'<span class="badge pend">Sem resumo</span>'}</td><td><button class="btn small out" onclick="carregarSindicatoCadastro(${i})">Editar</button></td></tr>`}).join("")+'</tbody>'
+  tabSindicatos.innerHTML='<thead><tr><th>Sindicato</th><th>Contato</th><th>E-mail</th><th>Data-base</th><th>Benefício</th><th>Anexos</th><th>Resumo</th><th>Ação</th></tr></thead><tbody>'+lista.map(s=>{const i=state.sindicatos.indexOf(s);return `<tr><td><button class="link-btn" onclick="abrirSindicato('${esc(s.nome).replaceAll("'","&#39;")}')">${esc(s.nome)}</button></td><td>${esc(s.contatoNome||"")}<br><span class="muted">${esc(s.contato||"")}</span></td><td>${esc(s.email||"")}</td><td>${esc(s.dataBase||"")}</td><td>${esc(s.beneficio||"")}</td><td>${(s.anexos||[]).length}</td><td>${s.resumoConvencao?'<span class="badge ok">Com resumo</span>':'<span class="badge pend">Sem resumo</span>'}</td><td><button class="btn small out" onclick="abrirEditarSindicato(${i})">Editar</button></td></tr>`}).join("")+'</tbody>'
 }
 function abrirSindicato(nome){
   const s=(state.sindicatos||[]).find(x=>x.nome===nome) || {nome}
@@ -2381,9 +2609,10 @@ function abrirSindicato(nome){
     <div class="sind-info"><b>E-mail</b>${esc(s.email||"Não informado")}</div>
     <div class="sind-info"><b>Data-base</b>${esc(s.dataBase||"Não informado")}</div>
     <div class="sind-info"><b>Benefício</b>${esc(s.beneficio||"Não informado")}</div>
+    <div class="sind-info"><b>Abre domingos/feriados</b>${esc(s.abreDomingoFeriado||"Não informado")}${s.anexoLiberacao?` · <a href="${esc(s.anexoLiberacao.dataUrl||"#")}" download="${esc(s.anexoLiberacao.nome||"liberacao")}" target="_blank">📎 liberação</a>`:""}</div>
     <div class="sind-info"><b>Empresas vinculadas</b>${state.empresas.filter(e=>e.sindicato===s.nome).map(e=>esc(e.codigo+" - "+e.nome)).join("<br>")||"Nenhuma"}</div>
     <div class="sind-info" style="grid-column:1/-1"><b>Observações</b>${esc(s.obs||"")}</div>
-    <div class="sind-info" style="grid-column:1/-1"><b>Resumo da convenção / circular</b><div style="white-space:pre-wrap">${esc(s.resumoConvencao||"Nenhum resumo cadastrado.")}</div></div>
+    <div class="sind-info" style="grid-column:1/-1"><b>Resumo da convenção / circular</b><div class="sind-resumo-scroll" style="white-space:pre-wrap">${esc(s.resumoConvencao||"Nenhum resumo cadastrado.")}</div><div style="margin-top:10px"><button class="btn small pri" onclick="abrirBeneficiosSind('${esc(s.id)}')">Resumo completo / Benefícios (${(s.beneficios||[]).length})</button></div></div>
     <div class="sind-info" style="grid-column:1/-1"><b>Anexos</b>${(s.anexos||[]).length?(s.anexos||[]).map(a=>`<div class="anexo-item"><div>${esc(a.tipo||"Documento")}<br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><a class="btn small out" href="${esc(a.dataUrl||"#")}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a></div>`).join(""):"Nenhum documento anexado."}</div>
   </div>`
   modalSindicato.classList.add("open")
@@ -4324,7 +4553,125 @@ function renderFerias(){
   tab.innerHTML='<thead><tr><th>Funcionário</th><th>Empresa</th><th>Admissão</th><th>Último período baixado</th><th>Período mais antigo em aberto</th><th>Prazo de gozo</th><th>Períodos em aberto</th><th>Status geral</th><th>Obs.</th><th>Ações</th></tr></thead><tbody>'+rows.map(x=>{const id=`${x.e.codigo}_${x.f.codigo}`; const p=x.a.periodoAtual||{}; const qtd=x.a.periodosAbertos||0; const abertoBadge=qtd>0?`<span class="badge ${qtd>=2?'mod-status-vencido':'mod-status-alerta'}">${esc(qtd)} ${qtd===1?'período':'períodos'}</span>`:`<span class="badge mod-status-ok">0</span>`; const prazoOld=x.a.prazoPrimeiro||''; const limiteOld=x.a.limiteMaisAntigo||''; return `<tr><td><b>${esc(x.f.nome)}</b><div class="mod-mini">${esc(x.f.funcao||'')}</div></td><td><b>${esc(x.e.codigo)} - ${esc(x.e.nome)}</b></td><td>${esc(fmtDataBR(x.f.admissao)||'-')}</td><td><div class="mod-actions-inline"><input id="ferUltIni_${id}" type="date" value="${esc(x.r.ultimoInicio||'')}" title="Início do último período baixado"><input id="ferUltFim_${id}" type="date" value="${esc(x.r.ultimoFim||'')}" title="Fim do último período baixado"></div><div class="mod-mini">preencha somente se já houve férias controladas</div></td><td>${esc(fmtDataBR(p.ini)||'-')} a ${esc(fmtDataBR(p.fim)||'-')}</td><td>${esc(fmtDataBR(prazoOld)||'-')}<div class="mod-mini">limite seguro do período: ${esc(fmtDataBR(limiteOld)||'-')}</div><div class="mod-mini">alerta anterior: ${esc(fmtDataBR(x.a.alertaMaisAntigo)||'-')}</div></td><td>${abertoBadge}</td><td><span class="badge ${x.a.cls}">${esc(x.a.txt)}</span></td><td><button class="btn small out" onclick="abrirObsFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">${x.r.obs?'Ler':'-'}</button></td><td><div class="action-line"><button class="btn small pri" onclick="salvarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Salvar</button><button class="btn small green" onclick="baixarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Baixar período</button></div></td></tr>`}).join('')+'</tbody>'
 }
 
-function renderAll(){renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
+/* ===== v2.7 — Módulo Guias (controle mensal por empresa) ===== */
+function guiasState(){
+  if(!state.guias || typeof state.guias!=='object') state.guias={};
+  if(!Array.isArray(state.guias.tipos)) state.guias.tipos=["Guia assistencial","Guia odontológica","Cartão alimentação"];
+  if(!Array.isArray(state.guias.empresas)) state.guias.empresas=[];
+  if(!state.guias.lanc || typeof state.guias.lanc!=='object') state.guias.lanc={};
+  return state.guias;
+}
+function guiasComp(){ const el=document.getElementById('guiasComp'); return (el&&el.value)|| comp(); }
+function guiaNomeEmp(cod){ const e=(state.empresas||[]).find(x=>String(x.codigo)===String(cod)); return e?`${e.codigo} - ${e.nome}`:String(cod); }
+function guiaRec(c,empCod,tipo){
+  const g=guiasState(); const k=`${c}|${empCod}|${tipo}`;
+  if(!g.lanc[k]) g.lanc[k]={status:'A gerar',dataEnvio:'',dataCobranca:''};
+  return g.lanc[k];
+}
+function guiaStatusClass(s){ return s==='Paga'?'ok':s==='Enviada'?'blue':s==='Atrasada'?'red':'pend'; }
+function guiaAddEmpresa(){
+  const sel=document.getElementById('guiaEmpAdd'); const cod=sel&&sel.value;
+  if(!cod)return alert('Selecione uma empresa.');
+  const g=guiasState();
+  if(g.empresas.some(x=>String(x.codigo)===String(cod)))return alert('Empresa já incluída no controle de guias.');
+  g.empresas.push({codigo:cod, tipos:g.tipos.slice()});
+  saved();
+}
+function guiaRemoveEmpresa(cod){
+  if(!confirm('Remover esta empresa do controle de guias? O histórico de lançamentos dela é mantido.'))return;
+  const g=guiasState(); g.empresas=g.empresas.filter(x=>String(x.codigo)!==String(cod)); saved();
+}
+function guiaToggleTipo(cod,tipo,checked){
+  const g=guiasState(); const e=g.empresas.find(x=>String(x.codigo)===String(cod)); if(!e)return;
+  if(!Array.isArray(e.tipos))e.tipos=[];
+  if(checked){ if(!e.tipos.includes(tipo))e.tipos.push(tipo); }
+  else{ e.tipos=e.tipos.filter(t=>t!==tipo); }
+  saved();
+}
+function guiaAddTipo(){
+  const el=document.getElementById('guiaTipoNovo'); const t=(el&&el.value||'').trim();
+  if(!t)return alert('Informe o nome do tipo de guia.');
+  const g=guiasState();
+  if(g.tipos.some(x=>x.toLowerCase()===t.toLowerCase()))return alert('Esse tipo de guia já existe.');
+  g.tipos.push(t); el.value=''; saved();
+}
+function guiaRemoveTipo(t){
+  if(!confirm('Remover o tipo "'+t+'"? Ele deixa de aparecer no controle. Lançamentos antigos são mantidos.'))return;
+  const g=guiasState(); g.tipos=g.tipos.filter(x=>x!==t);
+  g.empresas.forEach(e=>{ e.tipos=(e.tipos||[]).filter(x=>x!==t); });
+  saved();
+}
+function guiaSetStatus(empCod,tipo,val){ const r=guiaRec(guiasComp(),empCod,tipo); r.status=val; save(); renderGuias(); }
+function guiaSetData(empCod,tipo,campo,val){ const r=guiaRec(guiasComp(),empCod,tipo); r[campo]=val; save(); }
+function guiaLinhasComp(c){
+  const g=guiasState(); const linhas=[];
+  g.empresas.forEach(e=>{
+    (e.tipos||[]).forEach(tipo=>{
+      const r=guiaRec(c,e.codigo,tipo);
+      linhas.push({empCod:e.codigo, tipo, status:r.status, dataEnvio:r.dataEnvio, dataCobranca:r.dataCobranca});
+    });
+  });
+  return linhas;
+}
+function renderGuias(){
+  if(typeof tabGuias==='undefined')return;
+  const g=guiasState();
+  const cel=document.getElementById('guiasComp'); if(cel && !cel.value) cel.value=comp();
+  const c=guiasComp();
+  // filtro empresa: só as empresas incluídas
+  const fEmp=document.getElementById('guiasEmpFiltro');
+  if(fEmp){ const v=fEmp.value; fEmp.innerHTML='<option value="">Todas</option>'+g.empresas.map(e=>`<option value="${esc(e.codigo)}">${esc(guiaNomeEmp(e.codigo))}</option>`).join(''); if(v)fEmp.value=v; }
+  const empF=document.getElementById('guiasEmpFiltro')?.value||'';
+  const stF=document.getElementById('guiasStatusFiltro')?.value||'';
+  // select de adicionar empresa: empresas cadastradas ainda não incluídas
+  const addSel=document.getElementById('guiaEmpAdd');
+  if(addSel){
+    const disp=(state.empresas||[]).filter(e=>!g.empresas.some(x=>String(x.codigo)===String(e.codigo)));
+    addSel.innerHTML='<option value="">Selecione uma empresa...</option>'+disp.map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}</option>`).join('');
+  }
+  // tipos
+  const tiposBox=document.getElementById('guiaTiposLista');
+  if(tiposBox){ tiposBox.innerHTML=g.tipos.length?g.tipos.map(t=>`<span class="badge blue" style="margin:3px 4px;display:inline-flex;gap:6px;align-items:center">${esc(t)}<button class="link-btn" style="color:inherit;text-decoration:none;font-weight:900" title="Remover tipo" onclick="guiaRemoveTipo('${esc(t).replaceAll("'","&#39;")}')">✕</button></span>`).join(''):'Nenhum tipo cadastrado.'; }
+  // config empresas (quais tipos cada uma possui)
+  const cfg=document.getElementById('guiaEmpresasConfig');
+  if(cfg){
+    cfg.innerHTML=g.empresas.length?g.empresas.map(e=>{
+      const checks=g.tipos.map(t=>{const on=(e.tipos||[]).includes(t); const id=`gt_${esc(e.codigo)}_${esc(t).replace(/[^A-Za-z0-9]/g,'')}`; return `<label style="display:inline-flex;gap:5px;align-items:center;margin:2px 10px 2px 0"><input type="checkbox" ${on?'checked':''} onchange="guiaToggleTipo('${esc(e.codigo).replaceAll("'","&#39;")}','${esc(t).replaceAll("'","&#39;")}',this.checked)"> ${esc(t)}</label>`;}).join('');
+      return `<div class="card" style="box-shadow:none;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>${esc(guiaNomeEmp(e.codigo))}</b><button class="btn small red" onclick="guiaRemoveEmpresa('${esc(e.codigo).replaceAll("'","&#39;")}')">Remover</button></div><div style="margin-top:8px">${checks||'<span class="muted">Nenhum tipo de guia cadastrado.</span>'}</div></div>`;
+    }).join(''):'<p class="muted">Nenhuma empresa incluída ainda.</p>';
+  }
+  // tabela + KPIs
+  let linhas=guiaLinhasComp(c);
+  if(empF)linhas=linhas.filter(l=>String(l.empCod)===String(empF));
+  let k={total:0,gerar:0,enviada:0,paga:0,atrasada:0};
+  guiaLinhasComp(c).filter(l=>!empF||String(l.empCod)===String(empF)).forEach(l=>{
+    k.total++;
+    if(l.status==='A gerar')k.gerar++; else if(l.status==='Enviada')k.enviada++; else if(l.status==='Paga')k.paga++; else if(l.status==='Atrasada')k.atrasada++;
+  });
+  if(typeof guiaTotal!=='undefined'){guiaTotal.textContent=k.total; guiaGerar.textContent=k.gerar; guiaEnviada.textContent=k.enviada; guiaPaga.textContent=k.paga; guiaAtrasada.textContent=k.atrasada;}
+  if(stF)linhas=linhas.filter(l=>l.status===stF);
+  const opStatus=['A gerar','Enviada','Paga','Atrasada'];
+  tabGuias.innerHTML='<thead><tr><th>Empresa</th><th>Tipo de guia</th><th>Status</th><th>Data de envio</th><th>Data de cobrança</th></tr></thead><tbody>'+(linhas.length?linhas.map(l=>{
+    const sel=`<select onchange="guiaSetStatus('${esc(l.empCod).replaceAll("'","&#39;")}','${esc(l.tipo).replaceAll("'","&#39;")}',this.value)">`+opStatus.map(o=>`<option ${o===l.status?'selected':''}>${o}</option>`).join('')+'</select>';
+    return `<tr><td>${esc(guiaNomeEmp(l.empCod))}</td><td><b>${esc(l.tipo)}</b></td><td><span class="badge ${guiaStatusClass(l.status)}" style="margin-bottom:4px">${esc(l.status)}</span><br>${sel}</td><td><input type="date" value="${esc(l.dataEnvio||'')}" onchange="guiaSetData('${esc(l.empCod).replaceAll("'","&#39;")}','${esc(l.tipo).replaceAll("'","&#39;")}','dataEnvio',this.value)"></td><td><input type="date" value="${esc(l.dataCobranca||'')}" onchange="guiaSetData('${esc(l.empCod).replaceAll("'","&#39;")}','${esc(l.tipo).replaceAll("'","&#39;")}','dataCobranca',this.value)"></td></tr>`;
+  }).join(''):'<tr><td colspan="5" class="muted">Nenhuma guia para esta competência/filtro. Inclua empresas e marque os tipos abaixo.</td></tr>')+'</tbody>';
+}
+function gerarPDFGuiasGerar(){
+  const c=guiasComp();
+  const empF=document.getElementById('guiasEmpFiltro')?.value||'';
+  const rows=[];
+  guiaLinhasComp(c).forEach(l=>{ if(empF&&String(l.empCod)!==String(empF))return; if(l.status==='A gerar')rows.push([guiaNomeEmp(l.empCod),l.tipo]); });
+  abrirPDFModuloTeste('Guias a gerar — '+fmtMesAnoRel(c),'Guias que ainda precisam ser geradas no sindicato e enviadas ao cliente',`Competência: ${fmtMesAnoRel(c)} | Empresa: ${empF?guiaNomeEmp(empF):'Todas'}`,['Empresa','Tipo de guia'],rows);
+}
+function gerarPDFGuiasSituacao(){
+  const c=guiasComp();
+  const empF=document.getElementById('guiasEmpFiltro')?.value||'';
+  const stF=document.getElementById('guiasStatusFiltro')?.value||'';
+  const rows=[];
+  guiaLinhasComp(c).forEach(l=>{ if(empF&&String(l.empCod)!==String(empF))return; if(stF&&l.status!==stF)return; rows.push([guiaNomeEmp(l.empCod),l.tipo,l.status,fmtDataBR(l.dataEnvio)||'-',fmtDataBR(l.dataCobranca)||'-']); });
+  abrirPDFModuloTeste('Situação das guias — '+fmtMesAnoRel(c),'Quais foram enviadas, pagas, atrasadas ou ainda a gerar',`Competência: ${fmtMesAnoRel(c)} | Empresa: ${empF?guiaNomeEmp(empF):'Todas'} | Status: ${stF||'Todos'}`,['Empresa','Tipo de guia','Status','Data de envio','Data de cobrança'],rows);
+}
+function renderAll(){renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
 init();
 </script>
 </body>
