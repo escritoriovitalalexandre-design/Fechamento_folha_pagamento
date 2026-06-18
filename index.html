@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   crossorigin="anonymous"></script>
-<title>Controle de Fechamento da Folha — v2.9 | Melhorias travadas | 2026-06-17</title>
+<title>Controle de Fechamento da Folha — v3.0 | Melhorias travadas | 2026-06-17</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
 *{box-sizing:border-box}
@@ -382,12 +382,12 @@ body.modal-aberto{overflow:hidden}
   <div class="card">
     <h3 style="color:var(--pri);margin-top:0">🧾 Controle de Guias <span class="badge ok">Mensal</span></h3>
     <p class="muted">Controle, por empresa e por competência, quais guias precisam ser geradas no sindicato, se foram enviadas ao cliente e se já foram pagas.</p>
-    <div class="row">
-      <div><label>Competência</label><input id="guiasComp" type="month" onchange="renderGuias()"></div>
-      <div><label>Período</label><label style="display:flex;gap:6px;align-items:center;font-weight:700;color:var(--ink)"><input type="checkbox" id="guiasTodasComp" onchange="renderGuias()"> Todas as competências</label></div>
-      <div><label>Filtrar empresa</label><select id="guiasEmpFiltro" onchange="renderGuias()"><option value="">Todas</option></select></div>
-      <div><label>Status</label><select id="guiasStatusFiltro" onchange="renderGuias()"><option value="">Todos</option><option>A gerar</option><option>Solicitada</option><option>Enviada</option><option>Paga</option><option>Atrasada</option></select></div>
-      <div><label>Ação</label><div class="actions"><button class="btn out" onclick="gerarPDFGuiasGerar()">📄 PDF: a gerar</button><button class="btn pri" onclick="gerarPDFGuiasSituacao()">📄 PDF: situação</button></div></div>
+    <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap;margin-top:6px">
+      <div style="width:170px"><label>Competência</label><input id="guiasComp" type="month" onchange="renderGuias()" style="width:100%"></div>
+      <div><label>Período</label><label style="text-transform:none;color:var(--ink);font-weight:700;font-size:13px;display:flex;gap:6px;align-items:center;margin:0;height:38px"><input type="checkbox" id="guiasTodasComp" onchange="renderGuias()"> Todas as competências</label></div>
+      <div style="width:230px"><label>Filtrar empresa</label><select id="guiasEmpFiltro" onchange="renderGuias()" style="width:100%"><option value="">Todas</option></select></div>
+      <div style="width:160px"><label>Status</label><select id="guiasStatusFiltro" onchange="renderGuias()" style="width:100%"><option value="">Todos</option><option>A gerar</option><option>Solicitada</option><option>Enviada</option><option>Paga</option><option>Atrasada</option></select></div>
+      <div style="margin-left:auto"><label>Ação</label><div class="actions"><button class="btn out" onclick="gerarPDFGuiasGerar()">📄 PDF: a gerar</button><button class="btn pri" onclick="gerarPDFGuiasSituacao()">📄 PDF: situação</button></div></div>
     </div>
     <div class="mod-grid" style="margin-top:12px">
       <div class="mod-kpi"><b id="guiaTotal">0</b><span>Total</span></div>
@@ -403,7 +403,7 @@ body.modal-aberto{overflow:hidden}
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <h3 style="color:var(--pri);margin:0">Empresas no controle de guias</h3>
-      <div class="actions"><button class="btn small out" onclick="guiaExpandirTodas(true)">Mostrar todas</button><button class="btn small out" onclick="guiaExpandirTodas(false)">Ocultar todas</button></div>
+      <div class="actions"><button id="guiaBtnMostrar" class="btn small out" onclick="guiaExpandirTodas(true)">Mostrar todas</button><button id="guiaBtnOcultar" class="btn small out" onclick="guiaExpandirTodas(false)">Ocultar todas</button></div>
     </div>
     <p class="muted">Adicione apenas as empresas que possuem guias. Só as empresas adicionadas aqui aparecem no controle acima. Clique na empresa para abrir e marcar quais guias ela possui.</p>
     <div class="row">
@@ -440,8 +440,13 @@ body.modal-aberto{overflow:hidden}
       <button class="btn red" onclick="fecharGuiaTipo()">Fechar</button>
     </div>
     <input type="hidden" id="guiaTipoEditNome">
+    <input type="hidden" id="guiaTipoEditEmp">
     <div id="guiaTipoView" style="margin-top:12px"></div>
     <div id="guiaTipoEdit" style="display:none;margin-top:12px">
+      <div id="gtEscopoRow" style="display:none;background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px">
+        <label style="text-transform:none;color:var(--ink);font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="gtEscopoEmp" onchange="guiaTipoEscopoToggle()"> Informações específicas só para esta empresa (<b id="gtEscopoLabel"></b>)</label>
+        <div class="muted" style="font-size:12px;margin-top:6px">Marcado: vale só para esta empresa. Desmarcado: salva no cadastro geral (todas as empresas) e remove a personalização desta empresa.</div>
+      </div>
       <div class="row">
         <div><label>Forma de solicitação</label><select id="gtForma"><option value="">Não informado</option><option>Formulário</option><option>Site / Portal</option><option>Outro</option></select></div>
         <div class="sind-razao"><label>URL do site / portal</label><input id="gtUrl" placeholder="https://..."></div>
@@ -4595,7 +4600,7 @@ function renderFerias(){
   tab.innerHTML='<thead><tr><th>Funcionário</th><th>Empresa</th><th>Admissão</th><th>Último período baixado</th><th>Período mais antigo em aberto</th><th>Prazo de gozo</th><th>Períodos em aberto</th><th>Status geral</th><th>Obs.</th><th>Ações</th></tr></thead><tbody>'+rows.map(x=>{const id=`${x.e.codigo}_${x.f.codigo}`; const p=x.a.periodoAtual||{}; const qtd=x.a.periodosAbertos||0; const abertoBadge=qtd>0?`<span class="badge ${qtd>=2?'mod-status-vencido':'mod-status-alerta'}">${esc(qtd)} ${qtd===1?'período':'períodos'}</span>`:`<span class="badge mod-status-ok">0</span>`; const prazoOld=x.a.prazoPrimeiro||''; const limiteOld=x.a.limiteMaisAntigo||''; return `<tr><td><b>${esc(x.f.nome)}</b><div class="mod-mini">${esc(x.f.funcao||'')}</div></td><td><b>${esc(x.e.codigo)} - ${esc(x.e.nome)}</b></td><td>${esc(fmtDataBR(x.f.admissao)||'-')}</td><td><div class="mod-actions-inline"><input id="ferUltIni_${id}" type="date" value="${esc(x.r.ultimoInicio||'')}" title="Início do último período baixado"><input id="ferUltFim_${id}" type="date" value="${esc(x.r.ultimoFim||'')}" title="Fim do último período baixado"></div><div class="mod-mini">preencha somente se já houve férias controladas</div></td><td>${esc(fmtDataBR(p.ini)||'-')} a ${esc(fmtDataBR(p.fim)||'-')}</td><td>${esc(fmtDataBR(prazoOld)||'-')}<div class="mod-mini">limite seguro do período: ${esc(fmtDataBR(limiteOld)||'-')}</div><div class="mod-mini">alerta anterior: ${esc(fmtDataBR(x.a.alertaMaisAntigo)||'-')}</div></td><td>${abertoBadge}</td><td><span class="badge ${x.a.cls}">${esc(x.a.txt)}</span></td><td><button class="btn small out" onclick="abrirObsFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">${x.r.obs?'Ler':'-'}</button></td><td><div class="action-line"><button class="btn small pri" onclick="salvarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Salvar</button><button class="btn small green" onclick="baixarFeriasTeste('${esc(x.e.codigo)}','${esc(x.f.codigo)}')">Baixar período</button></div></td></tr>`}).join('')+'</tbody>'
 }
 
-/* ===== v2.9 — Módulo Guias (controle mensal por empresa) ===== */
+/* ===== v3.0 — Módulo Guias (controle mensal por empresa) ===== */
 const GUIA_STATUS=['A gerar','Solicitada','Enviada','Paga','Atrasada'];
 const GUIA_MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let guiaExpand=new Set();
@@ -4614,7 +4619,7 @@ function guiasState(){
     if(!Array.isArray(e.guias)){
       e.guias = Array.isArray(e.tipos)? e.tipos.map(nm=>({tipo:nm,meses:'todos',inicio:'',fim:''})) : [];
     } else {
-      e.guias=e.guias.map(x=>({tipo:x.tipo||'',meses:(x.meses==='todos'||!Array.isArray(x.meses))?'todos':x.meses,inicio:x.inicio||'',fim:x.fim||''}));
+      e.guias=e.guias.map(x=>({tipo:x.tipo||'',meses:(x.meses==='todos'||!Array.isArray(x.meses))?'todos':x.meses,inicio:x.inicio||'',fim:x.fim||'',acesso:x.acesso||null}));
     }
     if('tipos' in e) delete e.tipos;
   });
@@ -4716,18 +4721,33 @@ function guiaRemoveTipo(nome){
   g.empresas.forEach(e=>{e.guias=(e.guias||[]).filter(x=>x.tipo!==nome);});
   saved();
 }
-function abrirGuiaTipo(nome){
+function guiaAcessoEfetivo(nome,empCod){
+  const t=guiaTipoObj(nome);
+  if(empCod){
+    const e=guiasState().empresas.find(x=>String(x.codigo)===String(empCod));
+    const entry=e&&(e.guias||[]).find(x=>x.tipo===nome);
+    if(entry&&entry.acesso) return {fonte:'empresa',dados:entry.acesso};
+  }
+  return {fonte:'geral',dados:t||{forma:'',url:'',usuario:'',senha:'',infos:'',anexo:null}};
+}
+function abrirGuiaTipo(nome,empCod){
   const t=guiaTipoObj(nome); if(!t)return;
   document.getElementById('guiaTipoEditNome').value=t.nome;
-  document.getElementById('modalGuiaTipoTitulo').textContent='Guia: '+t.nome;
-  renderGuiaTipoView(t);
+  document.getElementById('guiaTipoEditEmp').value=empCod||'';
+  document.getElementById('modalGuiaTipoTitulo').textContent='Guia: '+t.nome+(empCod?' — '+guiaNomeEmp(empCod):'');
+  renderGuiaTipoView();
   document.getElementById('guiaTipoView').style.display='block';
   document.getElementById('guiaTipoEdit').style.display='none';
   modalGuiaTipo.classList.add('open');
 }
-function renderGuiaTipoView(t){
-  const a=t.anexo;
-  document.getElementById('guiaTipoView').innerHTML='<div class="sind-grid">'+
+function renderGuiaTipoView(){
+  const nome=document.getElementById('guiaTipoEditNome').value;
+  const empCod=document.getElementById('guiaTipoEditEmp').value;
+  const ef=guiaAcessoEfetivo(nome,empCod); const t=ef.dados; const a=t.anexo;
+  const badge = ef.fonte==='empresa'
+    ? '<span class="badge teal">Específico desta empresa</span>'
+    : '<span class="badge blue">Cadastro geral (todas as empresas)</span>';
+  document.getElementById('guiaTipoView').innerHTML='<div style="margin-bottom:10px">'+badge+'</div><div class="sind-grid">'+
     '<div class="sind-info"><b>Forma de solicitação</b>'+esc(t.forma||'Não informado')+'</div>'+
     '<div class="sind-info"><b>URL do site / portal</b>'+(t.url?'<a href="'+esc(t.url)+'" target="_blank" rel="noopener">'+esc(t.url)+'</a>':'Não informado')+'</div>'+
     '<div class="sind-info"><b>Usuário</b>'+esc(t.usuario||'Não informado')+'</div>'+
@@ -4736,19 +4756,46 @@ function renderGuiaTipoView(t){
     '<div class="sind-info" style="grid-column:1/-1"><b>Formulário / anexo</b>'+(a?'<div class="anexo-item"><div><b>'+esc(a.tipo||'Documento')+'</b><br><span class="muted">'+esc(a.nome||'')+' '+(a.tamanho?'· '+esc(formatFileSize(a.tamanho)):'')+'</span></div><a class="btn small out" href="'+esc(a.dataUrl||'#')+'" download="'+esc(a.nome||'documento')+'" target="_blank">Abrir/baixar</a></div>':'Nenhum documento anexado.')+'</div>'+
   '</div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn pri" onclick="guiaTipoIniciarEdicao()">Editar</button></div>';
 }
+function guiaTipoPreencherEdicao(d){
+  document.getElementById('gtForma').value=d.forma||'';
+  document.getElementById('gtUrl').value=d.url||'';
+  document.getElementById('gtUsuario').value=d.usuario||'';
+  document.getElementById('gtSenha').value=d.senha||'';
+  document.getElementById('gtInfos').value=d.infos||'';
+  guiaTipoEditAnexoTemp=d.anexo?clone(d.anexo):null; renderGtAnexo();
+}
 function guiaTipoIniciarEdicao(){
-  const t=guiaTipoObj(document.getElementById('guiaTipoEditNome').value); if(!t)return;
-  document.getElementById('gtForma').value=t.forma||'';
-  document.getElementById('gtUrl').value=t.url||'';
-  document.getElementById('gtUsuario').value=t.usuario||'';
-  document.getElementById('gtSenha').value=t.senha||'';
-  document.getElementById('gtInfos').value=t.infos||'';
-  guiaTipoEditAnexoTemp=t.anexo?clone(t.anexo):null; renderGtAnexo();
+  const nome=document.getElementById('guiaTipoEditNome').value;
+  const empCod=document.getElementById('guiaTipoEditEmp').value;
+  const t=guiaTipoObj(nome); if(!t)return;
+  const row=document.getElementById('gtEscopoRow');
+  if(empCod){
+    row.style.display='block';
+    document.getElementById('gtEscopoLabel').textContent=guiaNomeEmp(empCod);
+    const ef=guiaAcessoEfetivo(nome,empCod);
+    document.getElementById('gtEscopoEmp').checked=(ef.fonte==='empresa');
+    guiaTipoPreencherEdicao(ef.dados);
+  } else {
+    row.style.display='none';
+    document.getElementById('gtEscopoEmp').checked=false;
+    guiaTipoPreencherEdicao(t);
+  }
   document.getElementById('guiaTipoView').style.display='none';
   document.getElementById('guiaTipoEdit').style.display='block';
 }
+function guiaTipoEscopoToggle(){
+  const nome=document.getElementById('guiaTipoEditNome').value;
+  const empCod=document.getElementById('guiaTipoEditEmp').value;
+  if(document.getElementById('gtEscopoEmp').checked){
+    const e=guiasState().empresas.find(x=>String(x.codigo)===String(empCod));
+    const entry=e&&(e.guias||[]).find(x=>x.tipo===nome);
+    guiaTipoPreencherEdicao(entry&&entry.acesso?entry.acesso:guiaTipoObj(nome));
+  } else {
+    guiaTipoPreencherEdicao(guiaTipoObj(nome));
+  }
+}
 function guiaTipoCancelarEdicao(){
-  const t=guiaTipoObj(document.getElementById('guiaTipoEditNome').value); if(t)renderGuiaTipoView(t);
+  renderGuiaTipoView();
   document.getElementById('guiaTipoEdit').style.display='none';
   document.getElementById('guiaTipoView').style.display='block';
 }
@@ -4761,13 +4808,19 @@ function guiaTipoEditAnexo(files){
   reader.readAsDataURL(file);
 }
 function guiaTipoSalvarEdicao(){
-  const t=guiaTipoObj(document.getElementById('guiaTipoEditNome').value); if(!t)return;
-  t.forma=document.getElementById('gtForma').value||'';
-  t.url=(document.getElementById('gtUrl').value||'').trim();
-  t.usuario=(document.getElementById('gtUsuario').value||'').trim();
-  t.senha=document.getElementById('gtSenha').value||'';
-  t.infos=(document.getElementById('gtInfos').value||'').trim();
-  t.anexo=guiaTipoEditAnexoTemp||null;
+  const nome=document.getElementById('guiaTipoEditNome').value;
+  const empCod=document.getElementById('guiaTipoEditEmp').value;
+  const t=guiaTipoObj(nome); if(!t)return;
+  const dados={forma:document.getElementById('gtForma').value||'',url:(document.getElementById('gtUrl').value||'').trim(),usuario:(document.getElementById('gtUsuario').value||'').trim(),senha:document.getElementById('gtSenha').value||'',infos:(document.getElementById('gtInfos').value||'').trim(),anexo:guiaTipoEditAnexoTemp||null};
+  const especifico = empCod && document.getElementById('gtEscopoEmp').checked;
+  if(empCod){
+    const e=guiasState().empresas.find(x=>String(x.codigo)===String(empCod));
+    const entry=e&&(e.guias||[]).find(x=>x.tipo===nome);
+    if(especifico){ if(entry)entry.acesso=dados; }
+    else { if(entry)entry.acesso=null; t.forma=dados.forma;t.url=dados.url;t.usuario=dados.usuario;t.senha=dados.senha;t.infos=dados.infos;t.anexo=dados.anexo; }
+  } else {
+    t.forma=dados.forma;t.url=dados.url;t.usuario=dados.usuario;t.senha=dados.senha;t.infos=dados.infos;t.anexo=dados.anexo;
+  }
   fecharGuiaTipo(); saved();
 }
 function fecharGuiaTipo(){modalGuiaTipo.classList.remove('open');}
@@ -4808,13 +4861,17 @@ function renderGuias(){
             } else if(entry&&entry.fim){
               sub='<div class="muted" style="margin:4px 0 4px 26px;font-size:12px">Encerrada — aparece até '+fmtComp(entry.fim)+' (histórico mantido). Marque para reativar.</div>';
             }
-            return '<div><label style="display:inline-flex;gap:7px;align-items:center"><input type="checkbox" '+(ativa?'checked':'')+' onchange="guiaToggleGuia(\''+codJs+'\',\''+tpJs+'\',this.checked)"> <b class="link-btn" style="text-decoration:none;cursor:pointer" title="Ver/editar dados da guia" onclick="abrirGuiaTipo(\''+tpJs+'\')">'+esc(t.nome)+'</b></label>'+sub+'</div>';
+            return '<div><label style="display:inline-flex;gap:7px;align-items:center"><input type="checkbox" '+(ativa?'checked':'')+' onchange="guiaToggleGuia(\''+codJs+'\',\''+tpJs+'\',this.checked)"> <b class="link-btn" style="text-decoration:none;cursor:pointer" title="Ver/editar dados da guia" onclick="abrirGuiaTipo(\''+tpJs+'\',\''+codJs+'\')">'+esc(t.nome)+'</b>'+((entry&&entry.acesso)?' <span class="badge teal" style="font-size:10px;padding:2px 6px" title="Tem informações de acesso específicas para esta empresa">específico</span>':'')+'</label>'+sub+'</div>';
           }).join('')+'</div>';
         }
       }
       return '<div class="card" style="box-shadow:none;margin-bottom:10px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><button class="link-btn" style="text-decoration:none;font-size:16px;cursor:pointer" onclick="guiaToggleExpand(\''+codJs+'\')">'+(aberta?'▾':'▸')+' '+esc(guiaNomeEmp(e.codigo))+'</button><button class="btn small red" onclick="guiaRemoveEmpresa(\''+codJs+'\')">Remover</button></div>'+body+'</div>';
     }).join(''):'<p class="muted">Nenhuma empresa incluída ainda.</p>';
   }
+  const _emps=guiaEmpresasOrdenadas(); const _ab=_emps.filter(e=>guiaExpand.has(String(e.codigo))).length;
+  const _bm=document.getElementById('guiaBtnMostrar'), _bo=document.getElementById('guiaBtnOcultar');
+  if(_bm) _bm.className='btn small '+((_emps.length>0&&_ab===_emps.length)?'pri':'out');
+  if(_bo) _bo.className='btn small '+((_ab===0)?'pri':'out');
   let base = todas ? guiaLinhasTodas() : guiaLinhasComp(c);
   if(empF) base=base.filter(l=>String(l.empCod)===String(empF));
   let k={total:0,gerar:0,solic:0,enviada:0,paga:0,atrasada:0};
@@ -4826,7 +4883,9 @@ function renderGuias(){
     const cJs=esc(l.comp); const eJs=esc(l.empCod).replaceAll("'","&#39;"); const tJs=esc(l.tipo).replaceAll("'","&#39;");
     const sel='<select onchange="guiaSetStatus(\''+cJs+'\',\''+eJs+'\',\''+tJs+'\',this.value)">'+GUIA_STATUS.map(o=>'<option '+(o===l.status?'selected':'')+'>'+o+'</option>').join('')+'</select>';
     const cCell = todas ? '<td>'+esc(fmtComp(l.comp))+'</td>' : '';
-    return '<tr>'+cCell+'<td>'+esc(guiaNomeEmp(l.empCod))+'</td><td><b class="link-btn" style="text-decoration:none;cursor:pointer" title="Ver/editar dados da guia" onclick="abrirGuiaTipo(\''+tJs+'\')">'+esc(l.tipo)+'</b></td><td><span class="badge '+guiaStatusClass(l.status)+'" style="margin-bottom:4px">'+esc(l.status)+'</span><br>'+sel+'</td><td><input type="date" value="'+esc(l.dataEnvio||'')+'" onchange="guiaSetData(\''+cJs+'\',\''+eJs+'\',\''+tJs+'\',\'dataEnvio\',this.value)"></td><td><input type="date" value="'+esc(l.dataCobranca||'')+'" onchange="guiaSetData(\''+cJs+'\',\''+eJs+'\',\''+tJs+'\',\'dataCobranca\',this.value)"></td></tr>';
+    const ov = guiaAcessoEfetivo(l.tipo,l.empCod).fonte==='empresa';
+    const mk = ov?' <span class="badge teal" style="font-size:10px;padding:2px 6px" title="Informações de acesso específicas desta empresa">específico</span>':'';
+    return '<tr>'+cCell+'<td>'+esc(guiaNomeEmp(l.empCod))+'</td><td><b class="link-btn" style="text-decoration:none;cursor:pointer" title="Ver/editar dados da guia" onclick="abrirGuiaTipo(\''+tJs+'\',\''+eJs+'\')">'+esc(l.tipo)+'</b>'+mk+'</td><td><span class="badge '+guiaStatusClass(l.status)+'" style="margin-bottom:4px">'+esc(l.status)+'</span><br>'+sel+'</td><td><input type="date" value="'+esc(l.dataEnvio||'')+'" onchange="guiaSetData(\''+cJs+'\',\''+eJs+'\',\''+tJs+'\',\'dataEnvio\',this.value)"></td><td><input type="date" value="'+esc(l.dataCobranca||'')+'" onchange="guiaSetData(\''+cJs+'\',\''+eJs+'\',\''+tJs+'\',\'dataCobranca\',this.value)"></td></tr>';
   }).join(''):'<tr><td colspan="'+(todas?6:5)+'" class="muted">Nenhuma guia para o filtro atual.</td></tr>')+'</tbody>';
 }
 function gerarPDFGuiasGerar(){
