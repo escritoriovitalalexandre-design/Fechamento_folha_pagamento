@@ -896,7 +896,10 @@ body.modal-aberto{overflow:hidden}
   <div class="sind-modal" style="max-height:88vh;overflow:auto">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <h3 id="modalSindBenefTitulo">Resumo completo</h3>
-      <button class="btn red" onclick="fecharBeneficiosSind()">Fechar</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn blue" onclick="abrirChecklistBenef()">Gerar checklist</button>
+        <button class="btn red" onclick="fecharBeneficiosSind()">Fechar</button>
+      </div>
     </div>
     <input type="hidden" id="sindBenefIdCampo">
     <div class="sind-info" style="margin-top:12px"><b>Resumo da convenção / circular</b><div id="sindBenefResumoTexto" class="sind-resumo-scroll" style="white-space:pre;max-height:60vh"></div></div>
@@ -908,6 +911,32 @@ body.modal-aberto{overflow:hidden}
       <div><label>&nbsp;</label><button class="btn pri" id="sindBenefBtnAdd" onclick="addBeneficioSind()">+ Adicionar item</button></div>
     </div>
     <div id="sindBenefLista" class="anexo-lista" style="margin-top:12px">Nenhum item cadastrado.</div>
+  </div>
+</div>
+
+<!-- MODAL CHECKLIST DE BENEFÍCIOS PARA O CLIENTE v3.1 (TRAVADO) -->
+<div id="modalChecklistBenef" class="overlay-sind">
+  <div class="sind-modal" style="max-width:920px;max-height:90vh;overflow:auto;margin:auto">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h3 style="margin:0;color:var(--pri)">Checklist de benefícios para o cliente</h3>
+      <button class="btn red" onclick="fecharChecklistBenef()">Fechar</button>
+    </div>
+    <p class="muted" style="margin-top:8px">Marque os itens que vão para o cliente e escreva o texto que ele vai ler. O texto interno do DP não é enviado.</p>
+    <div class="sind-grid">
+      <div><label>Cliente / Empresa</label><input id="chkCliente" placeholder="Razão social do cliente"></div>
+      <div><label>Competência</label><input id="chkComp" placeholder="06/2026"></div>
+    </div>
+    <div style="margin-top:10px"><label>Texto de introdução (topo do documento)</label><textarea id="chkIntro" class="panel-notes"></textarea></div>
+    <label style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-weight:800;color:var(--pri);cursor:pointer">
+      <input type="checkbox" id="chkSelAll" checked onclick="toggleChecklistAll()" style="width:auto"> Selecionar todas
+    </label>
+    <div id="chkItensBox"></div>
+    <div style="margin-top:10px"><label>Texto de rodapé</label><textarea id="chkRodape" class="panel-notes"></textarea></div>
+    <div class="fun-save-row">
+      <button class="btn pri" onclick="imprimirChecklist()">Imprimir</button>
+      <button class="btn blue" onclick="exportarChecklistPDF()">Exportar PDF</button>
+      <button class="btn out" onclick="exportarChecklistWord()">Exportar Word</button>
+    </div>
   </div>
 </div>
 
@@ -2606,6 +2635,69 @@ function removerBeneficioSind(i){
 function salvarBeneficiosSind(){
   const s=state.sindicatos.find(x=>String(x.id)===String(sindBeneficiosSindId)); if(!s)return
   s.beneficios=sindBeneficiosTemp.slice(); save()
+}
+/* ===== v3.1 — Checklist de benefícios para o cliente (TRAVADO: nunca altera a obs interna do DP) ===== */
+function _chkSindAtual(){return state.sindicatos.find(x=>String(x.id)===String(sindBeneficiosSindId))}
+function _chkCompAtual(){const d=new Date();return String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}
+function _chkIntroPadrao(){return "Prezado cliente, segue o resumo dos benefícios concedidos aos funcionários e os respectivos descontos, conforme a convenção coletiva vigente. Pedimos a gentileza de conferir e manter sua equipe ciente."}
+function _chkRodapePadrao(){return "Em caso de dúvidas, fale com o nosso departamento pessoal."}
+function abrirChecklistBenef(){
+  const s=_chkSindAtual(); if(!s)return alert("Abra um sindicato primeiro.")
+  if(!Array.isArray(s.beneficios)||!s.beneficios.length)return alert("Cadastre itens de benefício antes de gerar o checklist.")
+  const cfg=s.checklistConfig||{}
+  document.getElementById("chkCliente").value=cfg.cliente||s.razao||""
+  document.getElementById("chkComp").value=cfg.competencia||_chkCompAtual()
+  document.getElementById("chkIntro").value=cfg.intro||_chkIntroPadrao()
+  document.getElementById("chkRodape").value=cfg.rodape||_chkRodapePadrao()
+  document.getElementById("chkSelAll").checked=true
+  renderChecklistItens()
+  document.getElementById("modalChecklistBenef").classList.add("open")
+}
+function fecharChecklistBenef(){salvarChecklistTextos();document.getElementById("modalChecklistBenef").classList.remove("open")}
+function renderChecklistItens(){
+  const s=_chkSindAtual(); const box=document.getElementById("chkItensBox"); if(!box||!s)return
+  box.innerHTML=(s.beneficios||[]).map((b,i)=>`<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px"><label style="display:flex;align-items:center;gap:8px;font-weight:800;cursor:pointer"><input type="checkbox" class="chkItem" data-i="${i}" checked onchange="_chkSyncAll()" style="width:auto"> ${esc(b.nome||"Item")}</label><div style="font-size:12px;color:var(--muted);margin:6px 0 2px">🔒 Texto interno do DP (não vai pro cliente): ${esc(b.obs||"—")}</div><label style="font-size:12px;color:var(--blue);margin-top:6px;text-transform:none;letter-spacing:0">Texto para o cliente</label><textarea class="chkTexto" data-i="${i}" placeholder="Escreva aqui o que o cliente vai ler sobre este benefício..." style="min-height:54px">${esc(b.textoCliente||"")}</textarea></div>`).join("")
+}
+function toggleChecklistAll(){const v=document.getElementById("chkSelAll").checked;document.querySelectorAll(".chkItem").forEach(c=>c.checked=v)}
+function _chkSyncAll(){const all=document.querySelectorAll(".chkItem"),on=document.querySelectorAll(".chkItem:checked");document.getElementById("chkSelAll").checked=all.length===on.length}
+function salvarChecklistTextos(){
+  const s=_chkSindAtual(); if(!s)return
+  document.querySelectorAll(".chkTexto").forEach(t=>{const i=+t.dataset.i; if(s.beneficios[i])s.beneficios[i].textoCliente=t.value})
+  s.checklistConfig={cliente:document.getElementById("chkCliente").value,competencia:document.getElementById("chkComp").value,intro:document.getElementById("chkIntro").value,rodape:document.getElementById("chkRodape").value}
+  if(typeof sindBeneficiosTemp!=="undefined"&&String(sindBeneficiosSindId)===String(s.id))sindBeneficiosTemp=clone(s.beneficios)
+  save()
+}
+function _chkColetaSelecionados(){
+  const s=_chkSindAtual(); const out=[]
+  document.querySelectorAll(".chkItem").forEach(c=>{if(c.checked){const i=+c.dataset.i;const txt=document.querySelector('.chkTexto[data-i="'+i+'"]');out.push({nome:s.beneficios[i].nome||"Item",texto:(txt?txt.value:s.beneficios[i].textoCliente)||""})}})
+  return out
+}
+function _chkDocHTML(){
+  const s=_chkSindAtual()
+  const cliente=esc(document.getElementById("chkCliente").value||"")
+  const comp=esc(document.getElementById("chkComp").value||"")
+  const intro=esc(document.getElementById("chkIntro").value||"")
+  const rodape=esc(document.getElementById("chkRodape").value||"")
+  const itens=_chkColetaSelecionados()
+  const hoje=new Date().toLocaleDateString("pt-BR")
+  if(!itens.length)return '<p>Nenhum item selecionado.</p>'
+  const linhas=itens.map(it=>`<tr><td style="vertical-align:top;width:26px;font-size:16px">&#9745;</td><td style="padding-bottom:10px"><b style="font-size:15px">${esc(it.nome)}</b><br><span style="color:#444">${esc(it.texto).replace(/\n/g,"<br>")}</span></td></tr>`).join("")
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;color:#172033;max-width:720px"><h2 style="margin:0;color:#1B3A6B">Checklist de benefícios e descontos do funcionário</h2><p style="margin:4px 0 0;color:#555">Cliente: <b>${cliente||"—"}</b> &nbsp;·&nbsp; Sindicato: <b>${esc(s.nome||"—")}</b> &nbsp;·&nbsp; Competência: <b>${comp||"—"}</b></p><hr style="border:none;border-top:2px solid #d8e0ea;margin:12px 0"><p style="line-height:1.6">${intro.replace(/\n/g,"<br>")}</p><table style="width:100%;border-collapse:collapse;margin-top:8px">${linhas}</table><hr style="border:none;border-top:1px solid #d8e0ea;margin:14px 0"><p style="color:#555;line-height:1.6">${rodape.replace(/\n/g,"<br>")}</p><p style="color:#888;font-size:12px;margin-top:18px">Documento gerado em ${hoje}.</p></div>`
+}
+function imprimirChecklist(){
+  salvarChecklistTextos()
+  const w=window.open("","_blank"); if(!w)return alert("Permita pop-ups para imprimir.")
+  w.document.write('<html><head><meta charset="utf-8"><title>Checklist de benefícios</title></head><body style="margin:24px">'+_chkDocHTML()+'</body></html>')
+  w.document.close(); w.focus(); setTimeout(()=>{w.print()},300)
+}
+function exportarChecklistPDF(){imprimirChecklist()}
+function exportarChecklistWord(){
+  salvarChecklistTextos()
+  const html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>'+_chkDocHTML()+'</body></html>'
+  const blob=new Blob(['﻿'+html],{type:"application/msword"})
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob)
+  const nome=(document.getElementById("chkCliente").value||"cliente").replace(/[^\w]+/g,"_")
+  a.download="checklist_beneficios_"+nome+".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }
 function salvarSindicatoCadastro(){
   const nome=sindNomeCad.value.trim()
