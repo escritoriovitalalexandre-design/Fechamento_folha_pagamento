@@ -922,6 +922,7 @@ body.modal-aberto{overflow:hidden}
       <button class="btn red" onclick="fecharChecklistBenef()">Fechar</button>
     </div>
     <p class="muted" style="margin-top:8px">Marque os itens que vão para o cliente e escreva o texto que ele vai ler. O texto interno do DP não é enviado.</p>
+    <div style="margin-bottom:10px"><label>Título do documento (aparece no topo do que vai pro cliente)</label><input id="chkTitulo" placeholder="Checklist de benefícios e descontos do funcionário"></div>
     <div class="sind-grid">
       <div><label>Cliente / Empresa</label><input id="chkCliente" placeholder="Razão social do cliente"></div>
       <div><label>Competência</label><input id="chkComp" placeholder="06/2026"></div>
@@ -2649,10 +2650,13 @@ function _chkRodapePadrao(){return "Em caso de dúvidas, fale com o nosso depart
 function _chkCaixaAlta(s){return !!s && s===s.toUpperCase() && /[A-ZÀ-Ý]/.test(s)}
 function _chkParaFrase(s){s=String(s||"").toLowerCase();return s.replace(/(^\s*|[.!?:]\s+)([a-zà-ÿ])/g,function(m,p1,p2){return p1+p2.toUpperCase()})}
 function _chkFmt(s){const on=document.getElementById("chkNormaliza");const norm=on?on.checked:true;return (norm&&_chkCaixaAlta(s))?_chkParaFrase(s):s}
+function _chkTituloPadrao(){return "Checklist de benefícios e descontos do funcionário"}
+function _chkBloco(s){s=_chkFmt(String(s||""));const html=s.split(/\r?\n/).map(function(l){if(!l.trim())return '<div style="height:8px"></div>';return '<p style="margin:0 0 6px;line-height:1.7;text-align:justify">'+esc(l)+'</p>'}).join("");return html||'<p style="margin:0"></p>'}
 function abrirChecklistBenef(){
   const s=_chkSindAtual(); if(!s)return alert("Abra um sindicato primeiro.")
   if(!Array.isArray(s.beneficios)||!s.beneficios.length)return alert("Cadastre itens de benefício antes de gerar o checklist.")
   const cfg=s.checklistConfig||{}
+  document.getElementById("chkTitulo").value=cfg.titulo||_chkTituloPadrao()
   document.getElementById("chkCliente").value=cfg.cliente||s.razao||""
   document.getElementById("chkComp").value=cfg.competencia||_chkCompAtual()
   document.getElementById("chkIntro").value=cfg.intro||_chkIntroPadrao()
@@ -2671,7 +2675,7 @@ function _chkSyncAll(){const all=document.querySelectorAll(".chkItem"),on=docume
 function salvarChecklistTextos(){
   const s=_chkSindAtual(); if(!s)return
   document.querySelectorAll(".chkTexto").forEach(t=>{const i=+t.dataset.i; if(s.beneficios[i])s.beneficios[i].textoCliente=t.value})
-  s.checklistConfig={cliente:document.getElementById("chkCliente").value,competencia:document.getElementById("chkComp").value,intro:document.getElementById("chkIntro").value,rodape:document.getElementById("chkRodape").value}
+  s.checklistConfig={titulo:document.getElementById("chkTitulo").value,cliente:document.getElementById("chkCliente").value,competencia:document.getElementById("chkComp").value,intro:document.getElementById("chkIntro").value,rodape:document.getElementById("chkRodape").value}
   if(typeof sindBeneficiosTemp!=="undefined"&&String(sindBeneficiosSindId)===String(s.id))sindBeneficiosTemp=clone(s.beneficios)
   save()
 }
@@ -2684,13 +2688,15 @@ function _chkDocHTML(){
   const s=_chkSindAtual()
   const cliente=esc(document.getElementById("chkCliente").value||"")
   const comp=esc(document.getElementById("chkComp").value||"")
-  const intro=esc(document.getElementById("chkIntro").value||"")
-  const rodape=esc(document.getElementById("chkRodape").value||"")
+  const titEl=document.getElementById("chkTitulo")
+  const titulo=esc((titEl&&titEl.value.trim())||_chkTituloPadrao())
+  const introHTML=_chkBloco(document.getElementById("chkIntro").value||"")
+  const rodapeHTML=_chkBloco(document.getElementById("chkRodape").value||"")
   const itens=_chkColetaSelecionados()
   const hoje=new Date().toLocaleDateString("pt-BR")
   if(!itens.length)return '<p>Nenhum item selecionado.</p>'
-  const linhas=itens.map(it=>`<tr><td style="vertical-align:top;width:24px;font-size:16px;color:#166534;padding:3px 0 0">&#9745;</td><td style="padding:0 0 16px 6px"><b style="font-size:15px;color:#1B3A6B">${esc(_chkFmt(it.nome))}</b><p style="margin:4px 0 0;color:#333;font-size:14px;line-height:1.7;text-align:left">${esc(_chkFmt(it.texto)).replace(/\n/g,"<br>")}</p></td></tr>`).join("")
-  return `<div style="font-family:Segoe UI,Arial,sans-serif;color:#172033;max-width:680px;margin:0 auto;font-size:14px;line-height:1.7;padding:8px"><h2 style="margin:0 0 2px;color:#1B3A6B;font-size:20px">Checklist de benefícios e descontos do funcionário</h2><p style="margin:0;color:#666;font-size:13px">Cliente: <b>${cliente||"—"}</b> &nbsp;·&nbsp; Sindicato: <b>${esc(s.nome||"—")}</b> &nbsp;·&nbsp; Competência: <b>${comp||"—"}</b></p><hr style="border:none;border-top:2px solid #d8e0ea;margin:14px 0"><p style="margin:0 0 16px;color:#333;line-height:1.7">${intro.replace(/\n/g,"<br>")}</p><table style="width:100%;border-collapse:collapse">${linhas}</table><hr style="border:none;border-top:1px solid #d8e0ea;margin:8px 0 14px"><p style="color:#444;line-height:1.7;margin:0">${rodape.replace(/\n/g,"<br>")}</p><p style="color:#999;font-size:12px;margin:20px 0 0">Documento gerado em ${hoje}.</p></div>`
+  const linhas=itens.map(it=>`<tr><td style="vertical-align:top;width:24px;font-size:16px;color:#166534;padding:3px 0 0">&#9745;</td><td style="padding:0 0 16px 6px"><b style="font-size:15px;color:#1B3A6B">${esc(_chkFmt(it.nome))}</b><div style="margin:4px 0 0;color:#333;font-size:14px">${_chkBloco(it.texto)}</div></td></tr>`).join("")
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;color:#172033;max-width:680px;margin:0 auto;font-size:14px;line-height:1.7;padding:8px"><h2 style="margin:0 0 2px;color:#1B3A6B;font-size:20px">${titulo}</h2><p style="margin:0;color:#666;font-size:13px">Cliente: <b>${cliente||"—"}</b> &nbsp;·&nbsp; Sindicato: <b>${esc(s.nome||"—")}</b> &nbsp;·&nbsp; Competência: <b>${comp||"—"}</b></p><hr style="border:none;border-top:2px solid #d8e0ea;margin:14px 0"><div style="margin:0 0 16px;color:#333">${introHTML}</div><table style="width:100%;border-collapse:collapse">${linhas}</table><hr style="border:none;border-top:1px solid #d8e0ea;margin:8px 0 14px"><div style="color:#444;margin:0">${rodapeHTML}</div><p style="color:#999;font-size:12px;margin:20px 0 0">Documento gerado em ${hoje}.</p></div>`
 }
 function imprimirChecklist(){
   salvarChecklistTextos()
