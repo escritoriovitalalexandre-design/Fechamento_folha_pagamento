@@ -1063,15 +1063,20 @@ async function sbGet(chave){
 }
 
 async function sbSet(chave, dados){
-  if(!sbClient) return;
+  if(!sbClient){
+    showSync("error", "Supabase não conectado");
+    return false;
+  }
   try{
     showSync("saving", "Salvando...");
     const {error} = await sbClient.from(SB_TABLE).upsert({chave, dados}, {onConflict: "chave"});
     if(error) throw error;
     showSync("saved", "Salvo ✓");
+    return true;
   }catch(e){
     showSync("error", "Erro ao salvar");
     console.error("Supabase save error:", e);
+    return false;
   }
 }
 
@@ -1112,10 +1117,32 @@ async function loadFromSupabase(){
 }
 
 function save(){
-  localStorage.setItem(KEY, JSON.stringify(state));
-  // Debounce para não sobrecarregar o Supabase
+  const payload = JSON.stringify(state);
+
+  // IMPORTANTE:
+  // O app salva no Supabase, mas antes tentava gravar tudo no navegador.
+  // Quando o localStorage fica cheio, o erro "exceeded the quota" travava a função
+  // antes de chegar no Supabase. Agora o erro local não impede o salvamento na nuvem.
+  try{
+    localStorage.setItem(KEY, payload);
+  }catch(e){
+    console.warn("Backup local não foi salvo porque o armazenamento do navegador está cheio:", e);
+    try{ OLD_KEYS.forEach(k=>localStorage.removeItem(k)); }catch(_e){}
+    showSync("saving", "Salvando no Supabase...");
+  }
+
+  // Salva na nuvem logo em seguida. Assim, mesmo com o navegador cheio,
+  // o app continua gravando no Supabase e o F5 não deve mais perder a alteração.
   if(_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(()=> sbSet(SB_CHAVE_STATE, state), 600);
+  _saveTimer = setTimeout(async ()=>{
+    const ok = await sbSet(SB_CHAVE_STATE, state);
+
+    // Se o Supabase salvou, tenta manter uma cópia local apenas se couber.
+    // Se não couber, não tem problema: na próxima abertura o app carrega do Supabase.
+    if(ok){
+      try{ localStorage.setItem(KEY, payload); }catch(_e){}
+    }
+  }, 150);
 }
 function saved(){save(); renderAll()}
 function clone(x){return JSON.parse(JSON.stringify(x))}
