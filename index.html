@@ -2191,7 +2191,6 @@ function rowEvento(empCod,funCod,ev,i){
     </select>
     <div class="event-actions">
       <button class="btn small green" onclick="salvarEventoLinha('${empCod}','${funCod}',${i},this.closest('.event-row'))">Salvar</button>
-      ${recorrente?`<span class="badge teal" title="Evento com prazo: aparece automaticamente em todos os meses do período (início até fim)">Período</span>`:""}
       ${podeExcluir
         ? `<button class="btn small red" onclick="delEvento('${empCod}','${funCod}',${i})">Excluir</button>`
         : `<span class="badge blue" title="Evento ${tituloProtegido.toLowerCase()} só pode ser excluído no cadastro do funcionário">${tituloProtegido}</span>`}
