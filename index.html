@@ -1015,6 +1015,7 @@ const LOCK_PING_MS = 30000;     // atualiza o sinal de vida a cada 30s
 const MINHA_SESSAO = "s" + Date.now() + "-" + Math.floor(Math.random()*1e6);
 let modoSomenteLeitura = false;
 let _lockTimer = null;
+let avisoFalhaSupabase = false; // evita repetir o pop-up a cada tentativa de salvar
 
 function getSBConfig(){
   const url = localStorage.getItem(SB_KEY_URL);
@@ -1134,10 +1135,17 @@ async function sbGet(chave){
   }catch(e){ return null; }
 }
 
+function avisarFalhaSalvamento(motivo){
+  // Pop-up de aviso. Aparece só uma vez por episódio de falha (não repete a cada tentativa).
+  if(avisoFalhaSupabase)return;
+  avisoFalhaSupabase=true;
+  alert("⚠️ ATENÇÃO — sua última alteração NÃO foi salva no Supabase.\n\nMotivo: "+motivo+"\n\nExiste uma cópia local de segurança neste navegador, mas não confie só nela. Assim que a conexão/permissão voltar, faça uma alteração e espere aparecer o \"Salvo ✓\" verde e a bolinha verde \"Supabase conectado\".");
+}
 async function sbSet(chave, dados){
   if(!sbClient){
     setConexao(false);
     showSync("error", "Supabase não conectado");
+    avisarFalhaSalvamento("O Supabase não está conectado.");
     return false;
   }
   try{
@@ -1155,15 +1163,18 @@ async function sbSet(chave, dados){
       showSync("error", "NÃO salvou (permissão)");
       setConexao(false);
       console.error("Upsert retornou 0 linhas para a chave '" + chave + "'. Verifique as políticas RLS/constraint da tabela " + SB_TABLE + ".");
+      avisarFalhaSalvamento("A gravação foi bloqueada por permissão (RLS) da tabela do Supabase.");
       return false;
     }
     showSync("saved", "Salvo ✓");
     setConexao(true);
+    avisoFalhaSupabase=false; // salvou de novo: libera o aviso para uma futura falha
     return true;
   }catch(e){
     showSync("error", "Erro ao salvar");
     setConexao(false);
     console.error("Supabase save error:", e);
+    avisarFalhaSalvamento("O Supabase pode estar fora do ar ou sem internet.");
     return false;
   }
 }
@@ -1251,6 +1262,7 @@ function save(){
     if(!leituraInicialOk){
       showSync("error", "Gravação bloqueada (sem leitura)");
       setConexao(false);
+      avisarFalhaSalvamento("Ao abrir, o app não conseguiu LER seus dados na nuvem, então bloqueou a gravação para não sobrescrever o que está no Supabase.");
       return;
     }
     const ok = await sbSet(SB_CHAVE_STATE, state);
