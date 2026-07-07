@@ -1281,6 +1281,8 @@ function normalizarEventosCadastradosFuncionario(fun){
   }
   fun.eventos=dedupUltimoPorChave(fun.eventos||[],"desc").map(ev=>({...ev,inicio:ev.inicio||"",fim:ev.fim||"",status:ev.status||"Pendente"}))
   fun.autoEventos=dedupUltimoPorChave(fun.autoEventos||[],"evento").map(a=>({...a,inicio:a.inicio||"",fim:a.fim||""}))
+  if(!Array.isArray(fun.eventosManuais))fun.eventosManuais=[]
+  fun.eventosManuais=fun.eventosManuais.map(m=>({desc:m.desc||"",valor:m.valor||"",obs:m.obs||"",inicio:m.inicio||"",fim:m.fim||"",status:m.status||"Pendente"}))
   return fun
 }
 function normalizarTempPorChave(lista,campo){
@@ -1579,6 +1581,7 @@ function fs(emp,fun){
   }
   sincronizarEventosCadastroFuncionario(emp,fun,f.funcionarios[k])
   aplicarAutoFuncionario(emp,fun,f.funcionarios[k])
+  aplicarManuaisRecorrentes(emp,fun,f.funcionarios[k])
   normalizarOrdemEventosFechamento(f.funcionarios[k])
   return f.funcionarios[k]
 }
@@ -1613,6 +1616,23 @@ function exclusoesAutomaticosCompetencia(cRef){
   const f=state.fechamentos[c]
   if(!Array.isArray(f.excluidosAutomaticos))f.excluidosAutomaticos=[]
   return f.excluidosAutomaticos
+}
+function exclusoesManuaisCompetencia(cRef){
+  const c=cRef||comp()
+  if(!state.fechamentos[c])state.fechamentos[c]={funcionarios:{},calendario:calcCalendarioMes(c),notaPainel:""}
+  const f=state.fechamentos[c]
+  if(!Array.isArray(f.excluidosManuais))f.excluidosManuais=[]
+  return f.excluidosManuais
+}
+function marcarExclusaoManualNaCompetencia(c,empCod,funCod,ev){
+  const chave=chaveEventoMes(empCod,funCod,ev)
+  const exc=exclusoesManuaisCompetencia(c)
+  if(!exc.includes(chave))exc.push(chave)
+}
+function acharDefManual(fun,evRef){
+  if(!fun||!Array.isArray(fun.eventosManuais))return null
+  const alvo=chaveEvento(evRef)
+  return fun.eventosManuais.find(d=>chaveEvento(d)===alvo)||null
 }
 
 function eventoVigenteNaCompetencia(ev,cRef){
@@ -1692,6 +1712,25 @@ function aplicarAutoFuncionario(emp,fun,fsObj){
     }else{
       fsObj.eventos.push({desc:a.evento,valor:total,obs:`Automático: ${a.qtd} por dia útil x ${uteis} dias úteis`,inicio:a.inicio||"",fim:a.fim||"",status:"Pendente",auto:true,origem:"automatico"})
     }
+  })
+}
+function aplicarManuaisRecorrentes(emp,fun,fsObj){
+  // Eventos manuais lançados no fechamento COM prazo (início/fim) se repetem por competência.
+  // Reaproveita a mesma lógica de vigência e exclusão por mês, sem tocar em padrão/automático.
+  if(!Array.isArray(fsObj.eventos))fsObj.eventos=[]
+  if(!Array.isArray(fun.eventosManuais))fun.eventosManuais=[]
+  const excluidos=exclusoesManuaisCompetencia()
+  // Preserva o status alterado no mês antes de reconstruir.
+  const statusAnterior={}
+  fsObj.eventos.forEach(ev=>{
+    if(ev.origem==="manual-recorrente")statusAnterior[chaveEvento(ev)]=ev.status||"Pendente"
+  })
+  fsObj.eventos=fsObj.eventos.filter(ev=>ev.origem!=="manual-recorrente")
+  ;(fun.eventosManuais||[]).forEach(ev=>{
+    if(!eventoVigenteNaCompetencia(ev))return
+    if(excluidos.includes(chaveEventoMes(emp.codigo,fun.codigo,ev)))return
+    const st=statusAnterior[chaveEvento(ev)]||ev.status||"Pendente"
+    fsObj.eventos.push({...clone(ev),origem:"manual-recorrente",status:st})
   })
 }
 function aplicarEventosAutomaticos(){empresasAtivas().forEach(emp=>emp.funcionarios.forEach(fun=>{const x=fs(emp,fun); aplicarAutoFuncionario(emp,fun,x)}))}
@@ -2081,12 +2120,51 @@ function salvarEventoLinha(e,f,i,row){
   if(idx<0 || idx>=item.x.eventos.length)return alert("Não localizei este evento para salvar.")
   if(!confirm("Salvar alterações deste evento?"))return
   const campos=row.querySelectorAll("select,input")
-  item.x.eventos[idx].desc=campos[0].value
-  item.x.eventos[idx].valor=valorPadrao(campos[1].value)
-  item.x.eventos[idx].obs=campos[2].value
-  item.x.eventos[idx].inicio=parseMesAnoCurto(campos[3].value)
-  item.x.eventos[idx].fim=parseMesAnoCurto(campos[4].value)
-  item.x.eventos[idx].status=campos[5].value
+  const evAtual=item.x.eventos[idx]
+  const origem=evAtual.origem || (evAtual.auto===true?"automatico":"manual")
+  const novoDesc=campos[0].value
+  const novoValor=valorPadrao(campos[1].value)
+  const novaObs=campos[2].value
+  const novoInicio=parseMesAnoCurto(campos[3].value)
+  const novoFim=parseMesAnoCurto(campos[4].value)
+  const novoStatus=campos[5].value
+  const temPrazo=!!(novoInicio||novoFim)
+
+  // Evento manual simples com prazo preenchido: vira evento com prazo (recorrente),
+  // guardado no funcionário, para aparecer em todos os meses do período.
+  if(origem==="manual" && temPrazo){
+    if(!Array.isArray(item.fun.eventosManuais))item.fun.eventosManuais=[]
+    item.fun.eventosManuais.push({desc:novoDesc,valor:novoValor,obs:novaObs,inicio:novoInicio,fim:novoFim,status:"Pendente"})
+    item.x.eventos.splice(idx,1)
+    save(); renderFechamento(); renderRel()
+    if(novoInicio && comp()<novoInicio){
+      alert("Evento com prazo salvo.\n\nEle começa a aparecer a partir de "+fmtMesAnoCurtoFechamento(novoInicio)+", por isso ainda não aparece neste mês.")
+    }
+    return
+  }
+
+  // Evento com prazo já existente.
+  if(origem==="manual-recorrente"){
+    const def=acharDefManual(item.fun,evAtual)
+    if(!temPrazo){
+      // Removeu os dois prazos: volta a ser evento só do mês atual.
+      if(def)item.fun.eventosManuais.splice(item.fun.eventosManuais.indexOf(def),1)
+      item.x.eventos[idx]={desc:novoDesc,valor:novoValor,obs:novaObs,inicio:"",fim:"",status:novoStatus,origem:"manual"}
+      save(); renderFechamento(); renderRel(); return
+    }
+    // Edita a definição: valor/observação/prazo valem para a série toda. Status fica por mês.
+    if(def){def.desc=novoDesc; def.valor=novoValor; def.obs=novaObs; def.inicio=novoInicio; def.fim=novoFim}
+    evAtual.status=novoStatus
+    save(); renderFechamento(); renderRel(); return
+  }
+
+  // Demais casos (manual sem prazo, padrão e automático): comportamento original.
+  item.x.eventos[idx].desc=novoDesc
+  item.x.eventos[idx].valor=novoValor
+  item.x.eventos[idx].obs=novaObs
+  item.x.eventos[idx].inicio=novoInicio
+  item.x.eventos[idx].fim=novoFim
+  item.x.eventos[idx].status=novoStatus
   if(!item.x.eventos[idx].origem)item.x.eventos[idx].origem="manual"
   save()
   renderFechamento()
@@ -2095,7 +2173,8 @@ function salvarEventoLinha(e,f,i,row){
 function rowEvento(empCod,funCod,ev,i){
   const st=ev.status||"Pendente"
   const origem=ev.origem || (ev.auto===true ? "automatico" : "manual")
-  const podeExcluir=origem==="manual"
+  const recorrente=origem==="manual-recorrente"
+  const podeExcluir=origem==="manual"||recorrente
   const tituloProtegido=origem==="automatico" ? "Automático" : "Padrão"
   return `<div class="event-row">
     <select title="A lista mostra só eventos permitidos para esta empresa">${optsEventosEmpresa(empCod,ev.desc||"")}</select>
@@ -2112,6 +2191,7 @@ function rowEvento(empCod,funCod,ev,i){
     </select>
     <div class="event-actions">
       <button class="btn small green" onclick="salvarEventoLinha('${empCod}','${funCod}',${i},this.closest('.event-row'))">Salvar</button>
+      ${recorrente?`<span class="badge teal" title="Evento com prazo: aparece automaticamente em todos os meses do período (início até fim)">Período</span>`:""}
       ${podeExcluir
         ? `<button class="btn small red" onclick="delEvento('${empCod}','${funCod}',${i})">Excluir</button>`
         : `<span class="badge blue" title="Evento ${tituloProtegido.toLowerCase()} só pode ser excluído no cadastro do funcionário">${tituloProtegido}</span>`}
@@ -2228,6 +2308,18 @@ function delEvento(e,f,i){
   if(idx<0 || idx>=item.x.eventos.length)return alert("Não localizei este evento para excluir.")
   const ev=clone(item.x.eventos[idx])
   const origem=ev.origem || (ev.auto===true ? "automatico" : "manual")
+  if(origem==="manual-recorrente"){
+    if(confirm("Excluir este evento com prazo SOMENTE deste mês?\n\nOs outros meses continuam com o evento normalmente.")){
+      marcarExclusaoManualNaCompetencia(comp(),e,f,ev)
+      save(); renderFechamento(); renderRel(); return
+    }
+    if(confirm("Deseja excluir a SÉRIE INTEIRA (todos os meses) deste evento com prazo?\n\nEsta ação não pode ser desfeita.")){
+      const def=acharDefManual(item.fun,ev)
+      if(def)item.fun.eventosManuais.splice(item.fun.eventosManuais.indexOf(def),1)
+      save(); renderFechamento(); renderRel()
+    }
+    return
+  }
   if(origem!=="manual"){
     return alert("Este evento é automático ou padrão do funcionário. Para excluir, acesse o cadastro do funcionário e remova o evento por lá.")
   }
