@@ -1008,6 +1008,13 @@ const SB_CHAVE_STATE = "folha_state";
 const SB_CHAVE_PAINEL = "folha_painelMsg";
 let sbClient = null;
 let leituraInicialOk = false;
+// ===== Trava de presença (aviso de "sistema em uso") =====
+const SB_CHAVE_LOCK = "folha_lock";
+const LOCK_JANELA_MS = 60000;   // considera "em uso" se o sinal for dos últimos 60s
+const LOCK_PING_MS = 30000;     // atualiza o sinal de vida a cada 30s
+const MINHA_SESSAO = "s" + Date.now() + "-" + Math.floor(Math.random()*1e6);
+let modoSomenteLeitura = false;
+let _lockTimer = null;
 
 function getSBConfig(){
   const url = localStorage.getItem(SB_KEY_URL);
@@ -1064,6 +1071,50 @@ async function testarConexao(){
     setConexao(ok);
     return ok;
   }catch(e){ setConexao(false); return false; }
+}
+
+async function lerLock(){
+  if(!sbClient) return null;
+  try{
+    const {data, error} = await sbClient.from(SB_TABLE).select("dados").eq("chave", SB_CHAVE_LOCK).maybeSingle();
+    if(error) return null;
+    return data?.dados || null;
+  }catch(e){ return null; }
+}
+async function gravarLock(){
+  if(!sbClient || modoSomenteLeitura) return;
+  try{
+    await sbClient.from(SB_TABLE).upsert({chave: SB_CHAVE_LOCK, dados: {sessao: MINHA_SESSAO, ping: Date.now()}}, {onConflict: "chave"});
+  }catch(e){}
+}
+function iniciarHeartbeat(){
+  if(_lockTimer) clearInterval(_lockTimer);
+  _lockTimer = setInterval(gravarLock, LOCK_PING_MS);
+}
+function mostrarBarraSomenteLeitura(){
+  if(document.getElementById("barraLeitura")) return;
+  const bar = document.createElement("div");
+  bar.id = "barraLeitura";
+  bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:100000;background:#b91c1c;color:#fff;padding:10px 16px;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.25)";
+  bar.innerHTML = '🔒 MODO SOMENTE LEITURA — o sistema já está sendo usado em outro navegador. Suas alterações NÃO serão salvas. <button onclick="location.reload()" style="background:#fff;color:#b91c1c;border:0;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer">Tentar novamente</button>';
+  document.body.appendChild(bar);
+  document.body.style.paddingTop = "46px";
+}
+async function verificarPresenca(){
+  if(!sbClient) return;
+  const lock = await lerLock();
+  const agora = Date.now();
+  const emUso = lock && lock.sessao && lock.sessao !== MINHA_SESSAO && (agora - (lock.ping||0)) < LOCK_JANELA_MS;
+  if(emUso){
+    // Já tem alguém usando: entra somente leitura e bloqueia gravação.
+    modoSomenteLeitura = true;
+    mostrarBarraSomenteLeitura();
+    return;
+  }
+  // Livre: assume o controle e passa a emitir o sinal de vida.
+  modoSomenteLeitura = false;
+  await gravarLock();
+  iniciarHeartbeat();
 }
 
 function reconfigurarSupabase(){
@@ -1173,6 +1224,10 @@ async function loadFromSupabase(){
 }
 
 function save(){
+  if(modoSomenteLeitura){
+    showSync("error", "Somente leitura — não salvo");
+    return;
+  }
   const payload = JSON.stringify(state);
 
   // IMPORTANTE:
@@ -1895,6 +1950,8 @@ async function iniciarApp(){
   await testarConexao();
   // Carrega do Supabase
   state = await loadFromSupabase();
+  // Verifica se já tem alguém usando (trava de presença)
+  await verificarPresenca();
   // Limpa eventos sem cadastro
   setTimeout(()=>{ if(typeof limparEventosSemCadastro==="function" && limparEventosSemCadastro(false)>0) save(); },0);
   // Setup da UI
@@ -2857,9 +2914,11 @@ function excluirSindicato(i){
   const s=state.sindicatos[i]; if(!s)return
   const vinc=empresasVinculadasAoSindicato(s.nome)
   if(vinc.length){
-    return alert("Não é possível excluir \""+s.nome+"\".\n\nHá "+vinc.length+" empresa(s) vinculada(s) a este sindicato:\n\n"+vinc.map(e=>"• "+(e.codigo?e.codigo+" - ":"")+e.nome).join("\n")+"\n\nDesvincule essas empresas antes de excluir.")
+    if(!confirm("⚠️ ATENÇÃO\n\nO sindicato \""+s.nome+"\" possui "+vinc.length+" empresa(s) vinculada(s):\n\n"+vinc.map(e=>"• "+(e.codigo?e.codigo+" - ":"")+e.nome).join("\n")+"\n\nSe excluir, essas empresas ficarão SEM esse sindicato vinculado.\n\nDeseja excluir mesmo assim?"))return
+    if(!confirm("Confirmar exclusão de \""+s.nome+"\"?\n\nEsta é a segunda e última confirmação. Não pode ser desfeita."))return
+  }else{
+    if(!confirm("Excluir o sindicato \""+s.nome+"\"?\n\nEle não possui nenhuma empresa vinculada.\n\nEsta ação não pode ser desfeita."))return
   }
-  if(!confirm("Excluir o sindicato \""+s.nome+"\"?\n\nEle não possui nenhuma empresa vinculada.\n\nEsta ação não pode ser desfeita."))return
   state.sindicatos.splice(i,1)
   saved()
 }
@@ -2867,7 +2926,7 @@ function renderSindicatos(){
   if(typeof tabSindicatos==="undefined")return
   const b=(document.getElementById("sindBusca")?.value||"").toLowerCase()
   const lista=(state.sindicatos||[]).filter(s=>!b||[s.nome,s.razao,s.cnpj,s.contatoNome,s.contato,s.email,s.dataBase,s.beneficio,s.obs,s.resumoConvencao,(s.anexos||[]).map(a=>a.nome).join(" ")].join(" ").toLowerCase().includes(b))
-  tabSindicatos.innerHTML='<thead><tr><th>Sindicato</th><th>Contato</th><th>E-mail</th><th>Data-base</th><th>Benefício</th><th>Anexos</th><th>Resumo</th><th>Ação</th></tr></thead><tbody>'+lista.map(s=>{const i=state.sindicatos.indexOf(s);const nVinc=empresasVinculadasAoSindicato(s.nome).length;const btnExcluir=nVinc===0?`<button class="btn small red" onclick="excluirSindicato(${i})" title="Excluir sindicato sem empresas vinculadas">Excluir</button>`:`<span class="muted" style="font-size:11px" title="Não pode excluir: possui empresas vinculadas">🔒 ${nVinc} empresa(s)</span>`;return `<tr><td><button class="link-btn" onclick="abrirSindicato('${esc(s.nome).replaceAll("'","&#39;")}')">${esc(s.nome)}</button></td><td>${esc(s.contatoNome||"")}<br><span class="muted">${esc(s.contato||"")}</span></td><td>${esc(s.email||"")}</td><td>${esc(s.dataBase||"")}</td><td>${esc(s.beneficio||"")}</td><td>${(s.anexos||[]).length}</td><td>${s.resumoConvencao?'<span class="badge ok">Com resumo</span>':'<span class="badge pend">Sem resumo</span>'}</td><td style="white-space:nowrap"><button class="btn small out" onclick="abrirEditarSindicato(${i})">Editar</button> ${btnExcluir}</td></tr>`}).join("")+'</tbody>'
+  tabSindicatos.innerHTML='<thead><tr><th>Sindicato</th><th>Contato</th><th>E-mail</th><th>Data-base</th><th>Benefício</th><th>Anexos</th><th>Resumo</th><th>Ação</th></tr></thead><tbody>'+lista.map(s=>{const i=state.sindicatos.indexOf(s);const nVinc=empresasVinculadasAoSindicato(s.nome).length;const btnExcluir=`<button class="btn small red" onclick="excluirSindicato(${i})" title="${nVinc?('Excluir — atenção: possui '+nVinc+' empresa(s) vinculada(s)'):'Excluir sindicato'}">Excluir</button>${nVinc?` <span class="muted" style="font-size:11px" title="Empresas vinculadas">(${nVinc})</span>`:''}`;return `<tr><td><button class="link-btn" onclick="abrirSindicato('${esc(s.nome).replaceAll("'","&#39;")}')">${esc(s.nome)}</button></td><td>${esc(s.contatoNome||"")}<br><span class="muted">${esc(s.contato||"")}</span></td><td>${esc(s.email||"")}</td><td>${esc(s.dataBase||"")}</td><td>${esc(s.beneficio||"")}</td><td>${(s.anexos||[]).length}</td><td>${s.resumoConvencao?'<span class="badge ok">Com resumo</span>':'<span class="badge pend">Sem resumo</span>'}</td><td style="white-space:nowrap"><button class="btn small out" onclick="abrirEditarSindicato(${i})">Editar</button> ${btnExcluir}</td></tr>`}).join("")+'</tbody>'
 }
 function abrirSindicato(nome){
   const s=(state.sindicatos||[]).find(x=>x.nome===nome) || {nome}
