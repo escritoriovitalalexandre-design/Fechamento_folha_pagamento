@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   crossorigin="anonymous"></script>
-<title>Controle de Fechamento da Folha — v3.3 | Migração de anexos antigos | 2026-07-13</title>
+<title>Controle de Fechamento da Folha — v3.4 | Migração cobre acesso específico por empresa | 2026-07-13</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
 *{box-sizing:border-box}
@@ -1252,6 +1252,20 @@ async function migrarAnexosAntigos(){
     for(const t of g.tipos){
       if(t.anexo && t.anexo.dataUrl && !t.anexo.url){
         total++; t.anexo = await migrarAnexoObjeto(t.anexo); if(t.anexo.url) ok++;
+      }
+    }
+  }
+  // NOVO: acesso ESPECÍFICO por empresa (t.acesso.anexo dentro de guias.empresas[].guias[])
+  // — estrutura separada do anexo "padrão" do tipo de guia, descoberta em jul/2026.
+  if(Array.isArray(g.empresas)){
+    for(const e of g.empresas){
+      if(Array.isArray(e.guias)){
+        for(const x of e.guias){
+          if(x.acesso && x.acesso.anexo && x.acesso.anexo.dataUrl && !x.acesso.anexo.url){
+            total++; x.acesso.anexo = await migrarAnexoObjeto(x.acesso.anexo); if(x.acesso.anexo.url) ok++;
+            if(info) info.textContent = "Migrando... "+ok+" de "+total+" concluídos";
+          }
+        }
       }
     }
   }
