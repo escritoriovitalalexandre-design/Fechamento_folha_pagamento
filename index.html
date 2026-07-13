@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   crossorigin="anonymous"></script>
-<title>Controle de Fechamento da Folha — v3.2 | Anexos via Supabase Storage | 2026-07-13</title>
+<title>Controle de Fechamento da Folha — v3.3 | Migração de anexos antigos | 2026-07-13</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
 *{box-sizing:border-box}
@@ -843,7 +843,7 @@ body.modal-aberto{overflow:hidden}
 </div>
 </section>
 
-<section id="backup" class="section"><div class="card"><h3 style="color:var(--pri);margin-top:0">Backup</h3><p class="muted">Os dados ficam salvos no navegador. Faça backup regularmente para não perder alterações.</p><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn pri" onclick="downloadBackup()">⬇️ Baixar backup</button><button class="btn out" onclick="document.getElementById('backupFile').click()">⬆️ Restaurar backup</button><button class="btn red" onclick="resetAppConfirm()">⚠️ Resetar dados locais</button></div><p id="ultimoBackupInfo" class="muted" style="margin-top:10px;font-size:13px"></p><input id="backupFile" type="file" accept=".json" class="hidden" onchange="restoreBackup(event)"><div style="margin-top:16px"><button class="btn small out" onclick="toggleDadosTecnicos()" style="font-size:12px">🔍 Ver dados técnicos</button></div><div id="dadosTecnicosArea" style="display:none;margin-top:10px"><p class="muted" style="font-size:12px">Conteúdo atual dos dados salvos no navegador (uso técnico).</p><textarea id="backupTxt" readonly style="margin-top:6px;height:260px;font-size:11px"></textarea></div></div></section>
+<section id="backup" class="section"><div class="card"><h3 style="color:var(--pri);margin-top:0">Backup</h3><p class="muted">Os dados ficam salvos no navegador. Faça backup regularmente para não perder alterações.</p><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn pri" onclick="downloadBackup()">⬇️ Baixar backup</button><button class="btn out" onclick="document.getElementById('backupFile').click()">⬆️ Restaurar backup</button><button class="btn red" onclick="resetAppConfirm()">⚠️ Resetar dados locais</button></div><p id="ultimoBackupInfo" class="muted" style="margin-top:10px;font-size:13px"></p><input id="backupFile" type="file" accept=".json" class="hidden" onchange="restoreBackup(event)"><div style="margin-top:16px"><button class="btn small out" onclick="toggleDadosTecnicos()" style="font-size:12px">🔍 Ver dados técnicos</button></div><div id="dadosTecnicosArea" style="display:none;margin-top:10px"><p class="muted" style="font-size:12px">Conteúdo atual dos dados salvos no navegador (uso técnico).</p><textarea id="backupTxt" readonly style="margin-top:6px;height:260px;font-size:11px"></textarea></div></div><div class="card"><h3 style="color:var(--pri);margin-top:0">Migrar anexos antigos para o Storage</h3><p class="muted">Documentos anexados antes da atualização de anexos (v3.2) ficaram gravados dentro dos dados do sistema, deixando tudo mais pesado. Use o botão abaixo para reenviá-los ao Supabase Storage — nada é apagado, só o armazenamento é trocado.</p><button class="btn pri" onclick="migrarAnexosAntigos()">🔄 Migrar anexos antigos</button><p id="migracaoAnexosInfo" class="muted" style="margin-top:10px;font-size:13px"></p></div></section>
 </main></div>
 
 <div id="modalSindicato" class="overlay-sind">
@@ -1204,6 +1204,67 @@ async function uploadAnexoStorage(file, tipo){
   }
 }
 function anexoLink(a){ return a && (a.url || a.dataUrl) || "#" }
+
+// ========== MIGRAÇÃO DE ANEXOS ANTIGOS (base64 -> Storage) ==========
+// Anexos salvos ANTES da v3.2 ficaram gravados como base64 dentro do estado
+// (campo a.dataUrl). Isso continua funcionando, mas mantém o estado pesado e
+// pode voltar a travar o salvamento. Esta função reenvia esses anexos antigos
+// para o Storage e troca dataUrl por url, sem apagar nada caso algo falhe.
+async function dataUrlParaBlob(dataUrl){
+  const resp = await fetch(dataUrl);
+  return await resp.blob();
+}
+async function migrarAnexoObjeto(a){
+  if(!a || !a.dataUrl || a.url) return a; // vazio ou já migrado
+  try{
+    const blob = await dataUrlParaBlob(a.dataUrl);
+    const nomeSeguro = Date.now()+"_"+Math.floor(Math.random()*1e6)+"_"+String(a.nome||"arquivo").replace(/[^a-zA-Z0-9._-]/g,"_");
+    const {error: upErr} = await sbClient.storage.from(SB_BUCKET).upload(nomeSeguro, blob, {upsert:false, contentType: blob.type||undefined});
+    if(upErr) throw upErr;
+    const {data: pub} = sbClient.storage.from(SB_BUCKET).getPublicUrl(nomeSeguro);
+    return {id:a.id||(Date.now()+Math.random()), tipo:a.tipo, nome:a.nome, tamanho:a.tamanho, url: pub?.publicUrl||"", path: nomeSeguro, criadoEm: a.criadoEm||new Date().toISOString()};
+  }catch(e){
+    console.error("Falha ao migrar anexo antigo:", a?.nome, e);
+    return a; // mantém como estava — nada é perdido
+  }
+}
+async function migrarAnexosAntigos(){
+  if(!sbClient){ alert("Conecte ao Supabase primeiro (verifique a bolinha de conexão)."); return; }
+  if(!confirm("Isso vai reenviar para o Supabase Storage os documentos anexados ANTES da atualização (v3.2). Nada é apagado; se algum arquivo falhar, ele continua como está. Pode demorar alguns minutos dependendo da quantidade de anexos. Continuar?")) return;
+  const info = document.getElementById("migracaoAnexosInfo");
+  if(info) info.textContent = "Migrando, aguarde...";
+  let total=0, ok=0;
+  for(const s of (state.sindicatos||[])){
+    if(Array.isArray(s.anexos)){
+      for(let i=0;i<s.anexos.length;i++){
+        if(s.anexos[i] && s.anexos[i].dataUrl && !s.anexos[i].url){
+          total++; s.anexos[i]=await migrarAnexoObjeto(s.anexos[i]); if(s.anexos[i].url) ok++;
+          if(info) info.textContent = "Migrando... "+ok+" de "+total+" concluídos";
+        }
+      }
+    }
+    if(s.anexoLiberacao && s.anexoLiberacao.dataUrl && !s.anexoLiberacao.url){
+      total++; s.anexoLiberacao = await migrarAnexoObjeto(s.anexoLiberacao); if(s.anexoLiberacao.url) ok++;
+    }
+  }
+  const g = guiasState();
+  if(Array.isArray(g.tipos)){
+    for(const t of g.tipos){
+      if(t.anexo && t.anexo.dataUrl && !t.anexo.url){
+        total++; t.anexo = await migrarAnexoObjeto(t.anexo); if(t.anexo.url) ok++;
+      }
+    }
+  }
+  if(total===0){
+    if(info) info.textContent = "Nenhum anexo antigo encontrado — já está tudo migrado.";
+    alert("Não encontrei anexos antigos (em base64) para migrar. Já está tudo certo.");
+    return;
+  }
+  saved();
+  const msg = "Migração concluída: "+ok+" de "+total+" anexo(s) movidos para o Storage.";
+  if(info) info.textContent = msg + (ok<total?" Os que falharam continuam funcionando normalmente; você pode rodar de novo depois.":"");
+  alert(msg+(ok<total?"\n\nOs que falharam (falha de conexão) continuam funcionando como estavam — pode rodar a migração de novo depois.":"\n\nO estado ficou mais leve; o salvamento deve voltar ao normal."));
+}
 
 // ========== SETUP ==========
 function salvarSetup(){
