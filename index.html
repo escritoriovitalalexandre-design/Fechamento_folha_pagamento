@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   crossorigin="anonymous"></script>
-<title>Controle de Fechamento da Folha — v3.1 | Melhorias travadas | 2026-06-17</title>
+<title>Controle de Fechamento da Folha — v3.2 | Anexos via Supabase Storage | 2026-07-13</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--pri:#1B3A6B;--blue:#2563eb;--line:#d8e0ea;--green:#166534;--greenbg:#dcfce7;--amber:#92400e;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--shadow:0 7px 22px rgba(15,23,42,.07)}
 *{box-sizing:border-box}
@@ -1006,6 +1006,7 @@ const SB_KEY_ANON = "folha_sb_anon";
 const SB_TABLE = "dados_app";
 const SB_CHAVE_STATE = "folha_state";
 const SB_CHAVE_PAINEL = "folha_painelMsg";
+const SB_BUCKET = "anexos-folha"; // bucket do Supabase Storage p/ arquivos anexados (evita inchar o estado)
 let sbClient = null;
 let leituraInicialOk = false;
 // ===== Trava de presença (aviso de "sistema em uso") =====
@@ -1178,6 +1179,31 @@ async function sbSet(chave, dados){
     return false;
   }
 }
+
+// ========== UPLOAD DE ANEXOS (Supabase Storage) ==========
+// NOVO (v6.1): anexos passam a ir para o Storage em vez de virar base64 dentro do
+// estado. Isso evita estourar o localStorage e evita o upsert de "dados_app" falhar
+// (erro 500) quando o JSON do estado fica grande demais com muitos anexos.
+// Anexos antigos (salvos como base64 em a.dataUrl) continuam funcionando normalmente;
+// só os NOVOS uploads passam a usar a.url.
+async function uploadAnexoStorage(file, tipo){
+  if(!sbClient){
+    avisarFalhaSalvamento("O Supabase não está conectado (não foi possível enviar o anexo).");
+    return null;
+  }
+  try{
+    const nomeSeguro = Date.now()+"_"+Math.floor(Math.random()*1e6)+"_"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const {error: upErr} = await sbClient.storage.from(SB_BUCKET).upload(nomeSeguro, file, {upsert:false});
+    if(upErr) throw upErr;
+    const {data: pub} = sbClient.storage.from(SB_BUCKET).getPublicUrl(nomeSeguro);
+    return {id: Date.now()+Math.random(), tipo: tipo||"Documento", nome: file.name, tamanho: file.size, url: pub?.publicUrl||"", path: nomeSeguro, criadoEm: new Date().toISOString()};
+  }catch(e){
+    console.error("Falha ao enviar anexo para o Storage:", e);
+    alert("⚠️ Não consegui enviar o arquivo \""+file.name+"\" para o Supabase Storage.\n\nMotivo: "+(e?.message||e)+"\n\nVerifique se o bucket \""+SB_BUCKET+"\" existe e se há política de acesso (policy) para o anon. O anexo NÃO foi salvo.");
+    return null;
+  }
+}
+function anexoLink(a){ return a && (a.url || a.dataUrl) || "#" }
 
 // ========== SETUP ==========
 function salvarSetup(){
@@ -2768,57 +2794,68 @@ function renderSindicatoAnexosTemp(){
   const box=document.getElementById("sindAnexosLista")
   if(!box)return
   if(!sindicatoAnexosTemp.length){box.innerHTML="Nenhum documento anexado.";return}
-  box.innerHTML=sindicatoAnexosTemp.map((a,i)=>`<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><div class="anexo-links"><a class="btn small out" href="${esc(a.dataUrl||"#")}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a><button class="btn small red" onclick="sindicatoAnexosTemp.splice(${i},1);renderSindicatoAnexosTemp()">Remover</button></div></div>`).join("")
+  box.innerHTML=sindicatoAnexosTemp.map((a,i)=>a.enviando?`<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} — enviando...</span></div></div>`:`<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><div class="anexo-links"><a class="btn small out" href="${esc(anexoLink(a))}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a><button class="btn small red" onclick="sindicatoAnexosTemp.splice(${i},1);renderSindicatoAnexosTemp()">Remover</button></div></div>`).join("")
 }
-function addSindicatoAnexos(files){
+async function addSindicatoAnexos(files){
   const lista=Array.from(files||[])
   if(!lista.length)return
-  lista.forEach(file=>{
-    if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o PDF ou salve um resumo no campo de texto.`);return}
-    const reader=new FileReader()
-    reader.onload=()=>{sindicatoAnexosTemp.push({id:Date.now()+Math.random(),tipo:document.getElementById("sindTipoAnexoCad")?.value||"Documento",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()});renderSindicatoAnexosTemp()}
-    reader.readAsDataURL(file)
-  })
+  const tipo=document.getElementById("sindTipoAnexoCad")?.value||"Documento"
+  for(const file of lista){
+    if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
+    const marcador={id:Date.now()+Math.random(),tipo,nome:file.name,tamanho:file.size,enviando:true}
+    sindicatoAnexosTemp.push(marcador); renderSindicatoAnexosTemp()
+    const anexo=await uploadAnexoStorage(file,tipo)
+    const idx=sindicatoAnexosTemp.indexOf(marcador)
+    if(idx>=0){ if(anexo) sindicatoAnexosTemp[idx]=anexo; else sindicatoAnexosTemp.splice(idx,1) }
+    renderSindicatoAnexosTemp()
+  }
 }
 /* ===== v2.7 — anexo único de liberação domingo/feriado (cadastro) ===== */
 function anexoLinhaSindHtml(a,removeJs){
-  return `<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><div class="anexo-links"><a class="btn small out" href="${esc(a.dataUrl||"#")}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a>${removeJs?`<button class="btn small red" onclick="${removeJs}">Remover</button>`:""}</div></div>`
+  if(a.enviando)return `<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} — enviando...</span></div></div>`
+  return `<div class="anexo-item"><div><b>${esc(a.tipo||"Documento")}</b><br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><div class="anexo-links"><a class="btn small out" href="${esc(anexoLink(a))}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a>${removeJs?`<button class="btn small red" onclick="${removeJs}">Remover</button>`:""}</div></div>`
 }
 function renderSindicatoLiberacaoTemp(){
   const box=document.getElementById("sindLiberacaoLista"); if(!box)return
   box.innerHTML=sindLiberacaoTemp?anexoLinhaSindHtml(sindLiberacaoTemp,"sindLiberacaoTemp=null;renderSindicatoLiberacaoTemp()"):"Nenhum documento anexado."
 }
-function addSindicatoLiberacao(files){
+async function addSindicatoLiberacao(files){
   const file=Array.from(files||[])[0]; if(!file)return
-  if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o arquivo.`);return}
-  const reader=new FileReader()
-  reader.onload=()=>{sindLiberacaoTemp={id:Date.now()+Math.random(),tipo:"Liberação domingo/feriado",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderSindicatoLiberacaoTemp()}
-  reader.readAsDataURL(file)
+  if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);return}
+  const tipo="Liberação domingo/feriado"
+  sindLiberacaoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderSindicatoLiberacaoTemp()
+  const anexo=await uploadAnexoStorage(file,tipo)
+  sindLiberacaoTemp=anexo; renderSindicatoLiberacaoTemp()
 }
 /* ===== v2.7 — anexos do modal de edição ===== */
 function renderSindEditAnexos(){
   const box=document.getElementById("sindAnexosListaEdit"); if(!box)return
   box.innerHTML=sindEditAnexosTemp.length?sindEditAnexosTemp.map((a,i)=>anexoLinhaSindHtml(a,`sindEditAnexosTemp.splice(${i},1);renderSindEditAnexos()`)).join(""):"Nenhum documento anexado."
 }
-function addSindicatoAnexosEdit(files){
+async function addSindicatoAnexosEdit(files){
   const lista=Array.from(files||[]); if(!lista.length)return
-  lista.forEach(file=>{
-    if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o PDF ou salve um resumo no campo de texto.`);return}
-    const reader=new FileReader()
-    reader.onload=()=>{sindEditAnexosTemp.push({id:Date.now()+Math.random(),tipo:document.getElementById("sindTipoAnexoEdit")?.value||"Documento",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()});renderSindEditAnexos()}
-    reader.readAsDataURL(file)
-  })
+  const tipo=document.getElementById("sindTipoAnexoEdit")?.value||"Documento"
+  for(const file of lista){
+    if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
+    const marcador={id:Date.now()+Math.random(),tipo,nome:file.name,tamanho:file.size,enviando:true}
+    sindEditAnexosTemp.push(marcador); renderSindEditAnexos()
+    const anexo=await uploadAnexoStorage(file,tipo)
+    const idx=sindEditAnexosTemp.indexOf(marcador)
+    if(idx>=0){ if(anexo) sindEditAnexosTemp[idx]=anexo; else sindEditAnexosTemp.splice(idx,1) }
+    renderSindEditAnexos()
+  }
 }
 function renderSindEditLiberacao(){
   const box=document.getElementById("sindLiberacaoListaEdit"); if(!box)return
   box.innerHTML=sindEditLiberacaoTemp?anexoLinhaSindHtml(sindEditLiberacaoTemp,"sindEditLiberacaoTemp=null;renderSindEditLiberacao()"):"Nenhum documento anexado."
 }
-function addSindicatoLiberacaoEdit(files){
+async function addSindicatoLiberacaoEdit(files){
   const file=Array.from(files||[])[0]; if(!file)return
-  if(file.size>3*1024*1024){alert(`O arquivo ${file.name} tem mais de 3 MB. Para não travar o backup do navegador, compacte o arquivo.`);return}
-  const reader=new FileReader()
-  reader.onload=()=>{sindEditLiberacaoTemp={id:Date.now()+Math.random(),tipo:"Liberação domingo/feriado",nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderSindEditLiberacao()}
-  reader.readAsDataURL(file)
+  if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);return}
+  const tipo="Liberação domingo/feriado"
+  sindEditLiberacaoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderSindEditLiberacao()
+  const anexo=await uploadAnexoStorage(file,tipo)
+  sindEditLiberacaoTemp=anexo; renderSindEditLiberacao()
 }
 /* ===== v2.7 — abrir/salvar edição do sindicato em modal ===== */
 function abrirEditarSindicato(i){
@@ -3042,11 +3079,11 @@ function abrirSindicato(nome){
     <div class="sind-info"><b>E-mail</b>${esc(s.email||"Não informado")}</div>
     <div class="sind-info"><b>Data-base</b>${esc(s.dataBase||"Não informado")}</div>
     <div class="sind-info"><b>Benefício</b>${esc(s.beneficio||"Não informado")}</div>
-    <div class="sind-info"><b>Abre domingos/feriados</b>${esc(s.abreDomingoFeriado||"Não informado")}${s.anexoLiberacao?` · <a href="${esc(s.anexoLiberacao.dataUrl||"#")}" download="${esc(s.anexoLiberacao.nome||"liberacao")}" target="_blank">📎 liberação</a>`:""}</div>
+    <div class="sind-info"><b>Abre domingos/feriados</b>${esc(s.abreDomingoFeriado||"Não informado")}${s.anexoLiberacao?` · <a href="${esc(anexoLink(s.anexoLiberacao))}" download="${esc(s.anexoLiberacao.nome||"liberacao")}" target="_blank">📎 liberação</a>`:""}</div>
     <div class="sind-info"><b>Empresas vinculadas</b>${state.empresas.filter(e=>e.sindicato===s.nome).map(e=>esc(e.codigo+" - "+e.nome)).join("<br>")||"Nenhuma"}</div>
     <div class="sind-info" style="grid-column:1/-1"><b>Observações</b>${esc(s.obs||"")}</div>
     <div class="sind-info" style="grid-column:1/-1"><b>Resumo da convenção / circular</b><div class="sind-resumo-scroll" style="white-space:pre-wrap">${esc(s.resumoConvencao||"Nenhum resumo cadastrado.")}</div><div style="margin-top:10px"><button class="btn small pri" onclick="abrirBeneficiosSind('${esc(s.id)}')">Resumo completo / Benefícios (${(s.beneficios||[]).length})</button></div></div>
-    <div class="sind-info" style="grid-column:1/-1"><b>Anexos</b>${(s.anexos||[]).length?(s.anexos||[]).map(a=>`<div class="anexo-item"><div>${esc(a.tipo||"Documento")}<br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><a class="btn small out" href="${esc(a.dataUrl||"#")}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a></div>`).join(""):"Nenhum documento anexado."}</div>
+    <div class="sind-info" style="grid-column:1/-1"><b>Anexos</b>${(s.anexos||[]).length?(s.anexos||[]).map(a=>`<div class="anexo-item"><div>${esc(a.tipo||"Documento")}<br><span class="muted">${esc(a.nome||"")} ${a.tamanho?"· "+esc(formatFileSize(a.tamanho)):""}</span></div><a class="btn small out" href="${esc(anexoLink(a))}" download="${esc(a.nome||"documento")}" target="_blank">Abrir/baixar</a></div>`).join(""):"Nenhum documento anexado."}</div>
   </div>`
   modalSindicato.classList.add("open")
 }
@@ -5111,12 +5148,13 @@ function guiaToggleMes(cod,tipo,mesNum,checked){
   if(checked){if(!m.includes(mesNum))m.push(mesNum);} else {m=m.filter(x=>x!==mesNum);}
   m.sort((a,b)=>a-b); entry.meses=m; renderGuias();
 }
-function guiaAddTipoAnexo(files){
+async function guiaAddTipoAnexo(files){
   const file=Array.from(files||[])[0]; if(!file)return;
-  if(file.size>3*1024*1024){alert('O arquivo '+file.name+' tem mais de 3 MB. Compacte o arquivo.');return;}
-  const reader=new FileReader();
-  reader.onload=()=>{guiaTipoAnexoTemp={id:Date.now()+Math.random(),tipo:'Formulário da guia',nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderGuiaTipoAnexoTemp();};
-  reader.readAsDataURL(file);
+  if(file.size>10*1024*1024){alert('O arquivo '+file.name+' tem mais de 10 MB.');return;}
+  const tipo='Formulário da guia';
+  guiaTipoAnexoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderGuiaTipoAnexoTemp();
+  const anexo=await uploadAnexoStorage(file,tipo);
+  guiaTipoAnexoTemp=anexo; renderGuiaTipoAnexoTemp();
 }
 function renderGuiaTipoAnexoTemp(){const box=document.getElementById('guiaTipoAnexoLista'); if(!box)return; box.innerHTML=guiaTipoAnexoTemp?anexoLinhaSindHtml(guiaTipoAnexoTemp,'guiaTipoAnexoTemp=null;renderGuiaTipoAnexoTemp()'):'Nenhum documento anexado.';}
 function guiaAddTipo(){
@@ -5182,7 +5220,7 @@ function renderGuiaTipoView(){
     '<div class="sind-info"><b>Usuário</b>'+esc(t.usuario||'Não informado')+'</div>'+
     '<div class="sind-info"><b>Senha</b>'+esc(t.senha||'Não informado')+'</div>'+
     '<div class="sind-info" style="grid-column:1/-1"><b>Informações adicionais</b><div style="white-space:pre-wrap">'+esc(t.infos||'-')+'</div></div>'+
-    '<div class="sind-info" style="grid-column:1/-1"><b>Formulário / anexo</b>'+(a?'<div class="anexo-item"><div><b>'+esc(a.tipo||'Documento')+'</b><br><span class="muted">'+esc(a.nome||'')+' '+(a.tamanho?'· '+esc(formatFileSize(a.tamanho)):'')+'</span></div><a class="btn small out" href="'+esc(a.dataUrl||'#')+'" download="'+esc(a.nome||'documento')+'" target="_blank">Abrir/baixar</a></div>':'Nenhum documento anexado.')+'</div>'+
+    '<div class="sind-info" style="grid-column:1/-1"><b>Formulário / anexo</b>'+(a?'<div class="anexo-item"><div><b>'+esc(a.tipo||'Documento')+'</b><br><span class="muted">'+esc(a.nome||'')+' '+(a.tamanho?'· '+esc(formatFileSize(a.tamanho)):'')+'</span></div><a class="btn small out" href="'+esc(anexoLink(a))+'" download="'+esc(a.nome||'documento')+'" target="_blank">Abrir/baixar</a></div>':'Nenhum documento anexado.')+'</div>'+
   '</div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn pri" onclick="guiaTipoIniciarEdicao()">Editar</button></div>';
 }
 function guiaTipoPreencherEdicao(d){
@@ -5229,12 +5267,13 @@ function guiaTipoCancelarEdicao(){
   document.getElementById('guiaTipoView').style.display='block';
 }
 function renderGtAnexo(){const box=document.getElementById('gtAnexoLista'); if(!box)return; box.innerHTML=guiaTipoEditAnexoTemp?anexoLinhaSindHtml(guiaTipoEditAnexoTemp,'guiaTipoEditAnexoTemp=null;renderGtAnexo()'):'Nenhum documento anexado.';}
-function guiaTipoEditAnexo(files){
+async function guiaTipoEditAnexo(files){
   const file=Array.from(files||[])[0]; if(!file)return;
-  if(file.size>3*1024*1024){alert('O arquivo '+file.name+' tem mais de 3 MB. Compacte o arquivo.');return;}
-  const reader=new FileReader();
-  reader.onload=()=>{guiaTipoEditAnexoTemp={id:Date.now()+Math.random(),tipo:'Formulário da guia',nome:file.name,tamanho:file.size,dataUrl:reader.result,criadoEm:new Date().toISOString()};renderGtAnexo();};
-  reader.readAsDataURL(file);
+  if(file.size>10*1024*1024){alert('O arquivo '+file.name+' tem mais de 10 MB.');return;}
+  const tipo='Formulário da guia';
+  guiaTipoEditAnexoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderGtAnexo();
+  const anexo=await uploadAnexoStorage(file,tipo);
+  guiaTipoEditAnexoTemp=anexo; renderGtAnexo();
 }
 function guiaTipoSalvarEdicao(){
   const nome=document.getElementById('guiaTipoEditNome').value;
