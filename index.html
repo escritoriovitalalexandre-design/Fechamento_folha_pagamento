@@ -46,8 +46,13 @@ tr:hover td{background:#fbfdff}
 .emp-card{border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:12px;overflow:hidden}
 .emp-head{display:grid;grid-template-columns:1.35fr 105px 130px 165px 150px;gap:10px;padding:13px;background:#fbfdff;border-bottom:1px solid var(--line);align-items:center}
 .emp-name{font-weight:850;color:var(--pri);font-size:15px}.emp-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.events{padding:12px}
-.event-row{display:grid;grid-template-columns:1.15fr 120px 1.35fr 160px 160px 135px 150px;gap:8px;margin-bottom:7px;align-items:center}
+.events{padding:12px;overflow-x:auto}
+.event-row{display:grid;grid-template-columns:56px minmax(300px,2.4fr) minmax(82px,.55fr) minmax(200px,1.45fr) 105px 105px 108px 142px;min-width:1160px;gap:8px;margin-bottom:7px;align-items:center}
+.event-row>select,.event-row>input{min-width:0}
+.event-row>.status-select{font-size:11px;padding-left:6px;padding-right:2px}
+.event-actions{white-space:nowrap}
+.event-order{display:flex;flex-direction:column;gap:2px}
+.event-order button{padding:1px 12px;line-height:17px;font-size:14px}
 .alerts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.alert{border:1px solid var(--line);border-radius:12px;padding:12px;background:white}.alert strong{color:var(--pri)}
 .muted{color:var(--muted);font-size:13px;line-height:1.35}.hidden{display:none}
 .status-select{font-weight:700}
@@ -126,7 +131,7 @@ tr:hover td{background:#fbfdff}
 .obs-sind-status.ok{background:#dcfce7;color:#166534}
 .obs-sind-status.nao{background:#fee2e2;color:#991b1b}
 #tabFun th.fun-salario-col,#tabFun td.fun-salario-col{min-width:135px;width:135px;white-space:nowrap}
-@media(max-width:1050px){aside{position:relative;width:100%}.app{display:block}main{margin:0;width:100%;padding:16px}.kpis{grid-template-columns:repeat(2,1fr)}.row,.emp-head,.event-row{grid-template-columns:1fr}}
+@media(max-width:1050px){aside{position:relative;width:100%}.app{display:block}main{margin:0;width:100%;padding:16px}.kpis{grid-template-columns:repeat(2,1fr)}.row,.emp-head{grid-template-columns:1fr}}
 
 /* TELA DE SETUP */
 #tela-setup{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;align-items:center;justify-content:center;padding:24px}
@@ -1859,6 +1864,11 @@ function ordemEventoFechamento(ev){
 }
 function normalizarOrdemEventosFechamento(fsObj){
   if(!fsObj || !Array.isArray(fsObj.eventos))return
+  const ordemSalva=fsObj.ordemEventos||{}
+  fsObj.eventos.forEach(ev=>{
+    const pos=ordemSalva[chaveEvento(ev)]
+    if(Number.isInteger(pos))ev.ordemManual=pos
+  })
   fsObj.eventos=fsObj.eventos
     .map((ev,idx)=>({ev,idx}))
     .sort((a,b)=>{
@@ -2298,7 +2308,7 @@ function rowEvento(empCod,funCod,ev,i){
   const podeExcluir=origem==="manual"||recorrente
   const tituloProtegido=origem==="automatico" ? "Automático" : "Padrão"
   return `<div class="event-row">
-    <div style="display:flex;gap:3px;align-items:center"><input type="checkbox" title="Escolher a posição deste evento" onchange="this.nextElementSibling.disabled=!this.checked" style="width:auto"><input type="number" min="1" value="${i+1}" title="Posição na sequência" style="width:58px" disabled><button class="btn small out" onclick="definirOrdemEventoFechamento('${empCod}','${funCod}',${i},this)">Ordem</button></div>
+    <div class="event-order"><button class="btn small out" title="Mover evento para cima" aria-label="Mover evento para cima" onclick="moverEventoFechamento('${empCod}','${funCod}',${i},-1)">▲</button><button class="btn small out" title="Mover evento para baixo" aria-label="Mover evento para baixo" onclick="moverEventoFechamento('${empCod}','${funCod}',${i},1)">▼</button></div>
     <select title="A lista mostra só eventos permitidos para esta empresa">${optsEventosEmpresa(empCod,ev.desc||"")}</select>
     <input value="${esc(ev.valor??"")}" placeholder="Valor/qtd">
     <input value="${esc(ev.obs??"")}" placeholder="Observação">
@@ -2340,16 +2350,15 @@ function renderInfoDataBaseFechamento(){
   box.innerHTML=`<strong>Data-base da empresa:</strong> ${esc(dataBase)} &nbsp; <span class="badge ${dbClass(status)}">${esc(status)}</span><br><span class="muted"><b>Sindicato:</b> ${sindicatoHtml}${obs?" · "+esc(obs):""}</span>`
 }
 
-function definirOrdemEventoFechamento(empCod,funCod,idx,botao){
+function moverEventoFechamento(empCod,funCod,idx,direcao){
   const item=find(empCod,funCod)
-  const controles=botao.parentElement
-  const pos=Number(controles.querySelector('input[type="number"]')?.value)
-  if(!controles.querySelector('input[type="checkbox"]')?.checked)return alert("Marque o evento para escolher a posição.")
-  if(!item||!Number.isInteger(pos)||pos<1||pos>item.x.eventos.length)return alert("Informe uma posição válida.")
+  if(!item)return
   const eventos=item.x.eventos
-  const [evento]=eventos.splice(idx,1)
-  eventos.splice(pos-1,0,evento)
-  eventos.forEach((ev,i)=>ev.ordemManual=i+1)
+  const destino=idx+direcao
+  if(destino<0||destino>=eventos.length)return
+  ;[eventos[idx],eventos[destino]]=[eventos[destino],eventos[idx]]
+  item.x.ordemEventos={}
+  eventos.forEach((ev,i)=>{ev.ordemManual=i+1;item.x.ordemEventos[chaveEvento(ev)]=i+1})
   save(); renderFechamento(); renderRel()
 }
 function renderFechamento(){
@@ -2360,7 +2369,7 @@ function renderFechamento(){
   if(!mostrarConferidos && filtroStatus!=="Conferido")arr=arr.filter(x=>x.fs.status!=="Conferido")
   listaFechamento.innerHTML=arr.length?arr.map(({e,f,fs})=>{
     const low=fs.status==="Conferido"&&filtroStatus==="Conferido"?" low-priority":""
-    return `<div class="emp-card${low}"><div class="emp-head"><div><div class="emp-name">${esc(f.codigo)} - ${esc(f.nome)}</div><div class="emp-sub">${esc(e.codigo)} - ${esc(e.nome)} · ${esc(f.funcao||"Sem função")}</div></div><div><label>Salário</label><b>R$ ${money(f.salario)}</b></div><div><label>Detectado</label><span class="badge ${f.statusDetectado==="Ativo"?"ok":f.statusDetectado.includes("Rescis")?"red":"pend"}">${esc(f.statusDetectado||"Ativo")}</span></div><div><label>Status</label><select class="status-select ${statusClass(fs.status)}" onchange="updStatus('${e.codigo}','${f.codigo}',this.value)"><option ${fs.status==="Pendente"?"selected":""}>Pendente</option><option ${fs.status==="Lançado"?"selected":""}>Lançado</option><option ${fs.status==="Conferido"?"selected":""}>Conferido</option></select></div><div><button class="btn small green" onclick="updStatus('${e.codigo}','${f.codigo}','Conferido')">Conferir</button> <button class="btn small out" onclick="addEventoFunc('${e.codigo}','${f.codigo}')">+ Evento</button></div></div><div class="events">${(fs.eventos||[]).map((ev,i)=>rowEvento(e.codigo,f.codigo,ev,i)).join("")}<label>Observação de conferência</label><textarea onchange="updObs('${e.codigo}','${f.codigo}',this.value)">${esc(fs.obs||"")}</textarea></div></div>`
+    return `<div class="emp-card${low}"><div class="emp-head"><div><div class="emp-name">${esc(f.codigo)} - ${esc(f.nome)} <span style="display:inline-block;margin-left:10px;font-size:12px;font-weight:700;background:#eaf2ff;color:#173b70;padding:4px 9px;border-radius:12px;white-space:nowrap">Admissão: ${esc(fmtDataBR(f.admissao||"")||"não informada")}</span></div><div class="emp-sub">${esc(e.codigo)} - ${esc(e.nome)} · ${esc(f.funcao||"Sem função")}</div></div><div><label>Salário</label><b>R$ ${money(f.salario)}</b></div><div><label>Detectado</label><span class="badge ${f.statusDetectado==="Ativo"?"ok":f.statusDetectado.includes("Rescis")?"red":"pend"}">${esc(f.statusDetectado||"Ativo")}</span></div><div><label>Status</label><select class="status-select ${statusClass(fs.status)}" onchange="updStatus('${e.codigo}','${f.codigo}',this.value)"><option ${fs.status==="Pendente"?"selected":""}>Pendente</option><option ${fs.status==="Lançado"?"selected":""}>Lançado</option><option ${fs.status==="Conferido"?"selected":""}>Conferido</option></select></div><div><button class="btn small green" onclick="updStatus('${e.codigo}','${f.codigo}','Conferido')">Conferir</button> <button class="btn small out" onclick="addEventoFunc('${e.codigo}','${f.codigo}')">+ Evento</button></div></div><div class="events">${(fs.eventos||[]).map((ev,i)=>rowEvento(e.codigo,f.codigo,ev,i)).join("")}<label>Observação de conferência</label><textarea onchange="updObs('${e.codigo}','${f.codigo}',this.value)">${esc(fs.obs||"")}</textarea></div></div>`
   }).join(""):'<div class="card"><b>Nenhum funcionário pendente para este filtro.</b><p class="muted">Os conferidos ficam ocultos por padrão. Marque “Mostrar funcionários já conferidos” para visualizar novamente.</p></div>'
 }
 function updStatus(e,f,v){find(e,f).x.status=v; saved()}
