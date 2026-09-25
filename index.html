@@ -472,7 +472,9 @@ body.modal-aberto{overflow:hidden}
 <div class="card fun-compact form-card" id="funcionarioFormCard">
   <h3 style="color:var(--pri);margin-top:0">Cadastrar / alterar funcionário <span id="funcionarioFormModo" class="form-title-badge">Novo cadastro</span></h3>
   <div class="row">
-    <div class="fun-emp-wide"><label>Empresa</label><select id="funEmpCad"></select></div>
+    <div class="fun-emp-wide"><label>Empresa</label><select id="funEmpCad" onchange="atualizarVisibilidadeCadastroFuncionario()"></select></div>
+  <div id="funCadastroDetalhes" style="display:none;grid-column:1/-1">
+  <div class="row">
     <div class="fun-cod-small"><label>Código</label><input id="funCodCad" placeholder="001"></div>
     <div class="fun-nome-wide"><label>Nome</label><input id="funNomeCad" placeholder="Nome completo do funcionário"></div>
     <div class="fun-funcao-small"><label>Função</label><input id="funFuncaoCad" placeholder="Função"></div>
@@ -497,6 +499,7 @@ body.modal-aberto{overflow:hidden}
   </div>
   <div class="auto-list" id="funEventoLista">Nenhum evento padrão vinculado.</div>
   <div class="row" style="margin-top:10px">
+  </div>
   </div>
 </div>
 <div class="card">
@@ -595,6 +598,7 @@ body.modal-aberto{overflow:hidden}
         <span style="color:var(--muted);font-size:13px">h</span>
         <input id="rLinhaMM" type="number" min="0" max="59" placeholder="Mm" style="width:65px">
         <span style="color:var(--muted);font-size:13px">min por dia</span>
+        <input id="rLinhaValor" inputmode="decimal" placeholder="R$ por dia (opcional)" style="width:160px">
         <button class="btn small green" onclick="addRegraLinha()">+ Adicionar linha</button>
       </div>
     </div>
@@ -1858,6 +1862,9 @@ function normalizarOrdemEventosFechamento(fsObj){
   fsObj.eventos=fsObj.eventos
     .map((ev,idx)=>({ev,idx}))
     .sort((a,b)=>{
+      if(Number.isInteger(a.ev.ordemManual)&&Number.isInteger(b.ev.ordemManual))return a.ev.ordemManual-b.ev.ordemManual
+      if(Number.isInteger(a.ev.ordemManual))return -1
+      if(Number.isInteger(b.ev.ordemManual))return 1
       const oa=ordemEventoFechamento(a.ev)
       const ob=ordemEventoFechamento(b.ev)
       if(oa!==ob)return oa-ob
@@ -2201,7 +2208,7 @@ function renderAlertas(){
         mostrar=verTodas||noMes
       }
       if(mostrar){
-        linhas.push({tipo,emp:`${e.codigo} - ${e.nome}`,empCod:e.codigo,sind:it.nome||"",status:st,det:`${it.dataBase||"Sem data-base"} · ${it.nome||"Sem sindicato"} · ${st}`,dissidio:it.dissidio||"",principal:it.principal,idx:it.idx})
+        linhas.push({tipo,emp:`${e.codigo} - ${e.nome}`,empCod:e.codigo,sind:it.nome||"",status:st,noMes,det:`${it.dataBase||"Sem data-base"} · ${it.nome||"Sem sindicato"} · ${st}`,dissidio:it.dissidio||"",principal:it.principal,idx:it.idx})
       }
     })
     let filtradas=linhas
@@ -2212,16 +2219,17 @@ function renderAlertas(){
 
   alertas.innerHTML=grupos.length?grupos.map(g=>{
     const pior=g.linhas.some(x=>x.status==="Vencida")?"Vencida":(g.linhas.some(x=>x.status==="Aguardando")?"Aguardando":"Em dia")
+    const destaqueMes=g.linhas.some(x=>x.status==="Em dia"&&x.noMes)
     const titulo=pior==="Vencida"?"Data-base vencida":(pior==="Aguardando"?"Data-base aguardando":"Data-base em dia")
     const rows=g.linhas.map(x=>`<div class="alert-sind-row">
       <div class="alert-sind-top">
-        <span class="badge ${dbClass(x.status)}" style="cursor:pointer" title="Clique para alternar o status" onclick="${x.principal?`confirmarAlternarStatusDB('${esc(x.empCod)}','${esc(x.status)}','${esc(x.emp)}')`:`confirmarAlternarStatusDBAdicional('${esc(x.empCod)}',${x.idx},'${esc(x.status)}','${esc(x.emp)}')`}">${esc(x.status)}${x.principal?"":" · adicional"}</span>
+        <span class="badge ${x.status==="Em dia"&&x.noMes?"red":dbClass(x.status)}" style="cursor:pointer;${x.status==="Em dia"&&x.noMes?"color:white;background:#b42318;":""}" title="Clique para alternar o status" onclick="${x.principal?`confirmarAlternarStatusDB('${esc(x.empCod)}','${esc(x.status)}','${esc(x.emp)}')`:`confirmarAlternarStatusDBAdicional('${esc(x.empCod)}',${x.idx},'${esc(x.status)}','${esc(x.emp)}')`}">${esc(x.status)}${x.principal?"":" · adicional"}</span>
         <button class="btn small out" style="font-size:11px;padding:2px 8px" onclick="abrirSindicatoPainel('${esc(x.sind)}')">Ver sindicato →</button>
       </div>
       <div class="alert-sind-info">${esc(x.det)}</div>
       ${x.dissidio?`<div class="alert-sind-dissidio">${esc(x.dissidio)}</div>`:""}
     </div>`).join("")
-    return `<div class="alert"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="badge ${dbClass(pior)}">${esc(titulo)}</span></div><div><strong>${esc(g.emp)}</strong></div><div class="alert-sind-list">${rows}</div></div>`
+    return `<div class="alert"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="badge ${pior==="Em dia"&&destaqueMes?"red":dbClass(pior)}" style="${pior==="Em dia"&&destaqueMes?"color:white;background:#b42318;":""}">${esc(titulo)}</span></div><div><strong>${esc(g.emp)}</strong></div><div class="alert-sind-list">${rows}</div></div>`
   }).join(""):'<div class="alert"><strong>Nenhuma data-base para exibir'+((_filtroAlerta!=="todos")?" com este filtro":"")+'.</strong><div class="muted">O painel mostra data-base Vencida, Aguardando e Em dia somente quando for do mês da competência selecionada (ou marque "Ver todas as datas-base").</div></div>'
 }
 function renderPainelDetalhes(){}
@@ -2290,6 +2298,7 @@ function rowEvento(empCod,funCod,ev,i){
   const podeExcluir=origem==="manual"||recorrente
   const tituloProtegido=origem==="automatico" ? "Automático" : "Padrão"
   return `<div class="event-row">
+    <div style="display:flex;gap:3px;align-items:center"><input type="checkbox" title="Escolher a posição deste evento" onchange="this.nextElementSibling.disabled=!this.checked" style="width:auto"><input type="number" min="1" value="${i+1}" title="Posição na sequência" style="width:58px" disabled><button class="btn small out" onclick="definirOrdemEventoFechamento('${empCod}','${funCod}',${i},this)">Ordem</button></div>
     <select title="A lista mostra só eventos permitidos para esta empresa">${optsEventosEmpresa(empCod,ev.desc||"")}</select>
     <input value="${esc(ev.valor??"")}" placeholder="Valor/qtd">
     <input value="${esc(ev.obs??"")}" placeholder="Observação">
@@ -2331,6 +2340,18 @@ function renderInfoDataBaseFechamento(){
   box.innerHTML=`<strong>Data-base da empresa:</strong> ${esc(dataBase)} &nbsp; <span class="badge ${dbClass(status)}">${esc(status)}</span><br><span class="muted"><b>Sindicato:</b> ${sindicatoHtml}${obs?" · "+esc(obs):""}</span>`
 }
 
+function definirOrdemEventoFechamento(empCod,funCod,idx,botao){
+  const item=find(empCod,funCod)
+  const controles=botao.parentElement
+  const pos=Number(controles.querySelector('input[type="number"]')?.value)
+  if(!controles.querySelector('input[type="checkbox"]')?.checked)return alert("Marque o evento para escolher a posição.")
+  if(!item||!Number.isInteger(pos)||pos<1||pos>item.x.eventos.length)return alert("Informe uma posição válida.")
+  const eventos=item.x.eventos
+  const [evento]=eventos.splice(idx,1)
+  eventos.splice(pos-1,0,evento)
+  eventos.forEach((ev,i)=>ev.ordemManual=i+1)
+  save(); renderFechamento(); renderRel()
+}
 function renderFechamento(){
   renderInfoDataBaseFechamento()
   let arr=filtrados()
@@ -2464,7 +2485,7 @@ function relRows(cFiltro, empresasFiltro){
       ;(x.eventos||[]).forEach(ev=>{
         if(!ev.desc&&!ev.valor&&!ev.obs&&!ev.inicio&&!ev.fim)return
         const parsed=parseEventoLabel(ev.desc)
-        rows.push({comp:competenciaRel,codEmp:e.codigo,empresa:e.nome,codFunc:f.codigo,func:f.nome,funcao:f.funcao||"",sal:f.salario,codEvento:parsed?parsed.codigo:"",evento:parsed?parsed.descricao:(ev.desc||""),eventoCompleto:ev.desc||"",valor:ev.valor??"",obs:ev.obs||x.obs||"",inicio:ev.inicio||"",fim:ev.fim||"",statusFunc:x.status,statusEvento:ev.status||"Pendente",eventoPadrao:(ev.origem==="cadastro-funcionario"?"Sim":"Não"),sind:sindicatoPrincipalEAdicionais(e).join(" / "),db:e.dataBase||"",dbStatus:statusDB(e),dbObs:e.dataBaseObs||"",dissidio:e.dissidio||"",vinculoSindicato:e.vinculoSindicato||"Normal"})
+        rows.push({comp:competenciaRel,codEmp:e.codigo,empresa:e.nome,codFunc:f.codigo,func:f.nome,funcao:f.funcao||"",sal:f.salario,codEvento:parsed?parsed.codigo:"",evento:parsed?parsed.descricao:(ev.desc||""),eventoCompleto:ev.desc||"",valor:ev.valor??"",obs:ev.obs||"",obsConferencia:x.obs||"",inicio:ev.inicio||"",fim:ev.fim||"",statusFunc:x.status,statusEvento:ev.status||"Pendente",eventoPadrao:(ev.origem==="cadastro-funcionario"?"Sim":"Não"),sind:sindicatoPrincipalEAdicionais(e).join(" / "),db:e.dataBase||"",dbStatus:statusDB(e),dbObs:e.dataBaseObs||"",dissidio:e.dissidio||"",vinculoSindicato:e.vinculoSindicato||"Normal"})
       })
     }))
     return rows
@@ -2574,22 +2595,23 @@ function renderRel(){
   const rows=relRows(relCompetenciaFiltro(), empresasRelatorioSelecionadas())
   let htmlRel=""
   let atualEmp="", atualFunc=""
-  rows.forEach(r=>{
+  rows.forEach((r,idx)=>{
     const keyEmp=r.codEmp
     if(keyEmp!==atualEmp){
       atualEmp=keyEmp; atualFunc=""
       const tri=r.dbObs?`<button class="tri-obs" title="Ler observação da data-base" onclick="lerObsDataBase('${esc(r.codEmp).replaceAll("'","&#39;")}')">▲</button>`:""
       const especial=r.vinculoSindicato==="Especial"?`<span class="badge-red-strong">VÍNCULO ESPECIAL</span>`:""
-      htmlRel+=`<tr class="rel-empresa"><td colspan="8">Empresa ${esc(r.codEmp)} - ${esc(r.empresa)} ${especial} | Sindicato: <button class="link-btn" onclick="abrirSindicato('${esc(r.sind).replaceAll("'","&#39;")}')">${esc(r.sind)}</button> | Data-base: ${esc(r.db)} | Status: <button class="link-btn ${dbClass(r.dbStatus)}" style="padding:3px 8px;border-radius:12px" onclick="editarObsDataBase('${esc(r.codEmp).replaceAll("'","&#39;")}')">${esc(r.dbStatus)}</button>${tri} ${r.dissidio? " | "+esc(r.dissidio):""}</td></tr>`
+      htmlRel+=`<tr class="rel-empresa"><td colspan="7">Empresa ${esc(r.codEmp)} - ${esc(r.empresa)} ${especial} | Sindicato: <button class="link-btn" onclick="abrirSindicato('${esc(r.sind).replaceAll("'","&#39;")}')">${esc(r.sind)}</button> | Data-base: ${esc(r.db)} | Status: <button class="link-btn ${dbClass(r.dbStatus)}" style="padding:3px 8px;border-radius:12px" onclick="editarObsDataBase('${esc(r.codEmp).replaceAll("'","&#39;")}')">${esc(r.dbStatus)}</button>${tri} ${r.dissidio? " | "+esc(r.dissidio):""}</td></tr>`
     }
     const keyFunc=r.codFunc
     if(keyFunc!==atualFunc){
       atualFunc=keyFunc
       const chaveRelFunc=`${r.codEmp}__${r.codFunc}`
-      htmlRel+=`<tr class="rel-func" data-rel-func="${esc(chaveRelFunc)}" onclick="selecionarFuncionarioRelatorio('${esc(chaveRelFunc).replaceAll("'","&#39;")}')" title="Clique para destacar este funcionário"><td colspan="8"><span class="func-line"><span class="rel-func-nome" style="font-weight:950;font-size:16px;color:#1B3A6B;background:#dbeafe;border-radius:8px;padding:3px 8px">${esc(r.codFunc)} - ${esc(r.func)}</span> <small>${esc(r.funcao||"Sem função")} · <span style="font-weight:900;font-size:13px;color:#172033">Salário: R$ ${money(r.sal)}</span></small><span class="selecionado-tag" onclick="limparSelecaoRelatorio(event)" title="Clique para desselecionar">SELECIONADO</span></span></td></tr>`
-      htmlRel+=`<tr><th class="rel-cod">Cód. Evento</th><th>Evento</th><th class="rel-valor">Valor/Qtd</th><th class="rel-data">Início</th><th class="rel-data">Fim</th><th class="rel-obs">Observação</th><th class="rel-padrao">Evento Padrão</th><th class="rel-status">Status Evento</th></tr>`
+      htmlRel+=`<tr class="rel-func" data-rel-func="${esc(chaveRelFunc)}" onclick="selecionarFuncionarioRelatorio('${esc(chaveRelFunc).replaceAll("'","&#39;")}')" title="Clique para destacar este funcionário"><td colspan="7"><span class="func-line"><span class="rel-func-nome" style="font-weight:950;font-size:16px;color:#1B3A6B;background:#dbeafe;border-radius:8px;padding:3px 8px">${esc(r.codFunc)} - ${esc(r.func)}</span> <small>${esc(r.funcao||"Sem função")} · <span style="font-weight:900;font-size:13px;color:#172033">Salário: R$ ${money(r.sal)}</span></small><span class="selecionado-tag" onclick="limparSelecaoRelatorio(event)" title="Clique para desselecionar">SELECIONADO</span></span></td></tr>`
+      htmlRel+=`<tr><th class="rel-cod">Cód. Evento</th><th>Evento</th><th class="rel-valor">Valor/Qtd</th><th class="rel-data">Início</th><th class="rel-data">Fim</th><th class="rel-padrao">Evento Padrão</th><th class="rel-status">Status Evento</th></tr>`
     }
-    htmlRel+=`<tr class="rel-evento-linha" data-rel-func="${esc(`${r.codEmp}__${r.codFunc}`)}" onclick="selecionarEventoRelatorio(this)" title="Clique para destacar este evento"><td class="rel-cod"><b>${esc(r.codEvento)}</b></td><td>${esc(r.evento)}</td><td class="rel-valor">${esc(r.valor)}</td><td class="rel-data">${esc(fmtMesAnoRel(r.inicio||""))}</td><td class="rel-data">${esc(fmtMesAnoRel(r.fim||""))}</td><td class="rel-obs">${esc(r.obs)}</td><td class="rel-padrao">${esc(r.eventoPadrao||"Não")}</td><td class="rel-status">${esc(r.statusEvento)}</td></tr>`
+    htmlRel+=`<tr class="rel-evento-linha" data-rel-func="${esc(`${r.codEmp}__${r.codFunc}`)}" onclick="selecionarEventoRelatorio(this)" title="Clique para destacar este evento"><td class="rel-cod"><b>${esc(r.codEvento)}</b></td><td>${esc(r.evento)}</td><td class="rel-valor">${esc(r.valor)}</td><td class="rel-data">${esc(fmtMesAnoRel(r.inicio||""))}</td><td class="rel-data">${esc(fmtMesAnoRel(r.fim||""))}</td><td class="rel-padrao">${esc(r.eventoPadrao||"Não")}</td><td class="rel-status">${esc(r.statusEvento)}</td></tr>`
+    if((idx===rows.length-1||rows[idx+1].codEmp!==r.codEmp||rows[idx+1].codFunc!==r.codFunc)&&r.obsConferencia)htmlRel+=`<tr class="rel-func" data-rel-func="${esc(`${r.codEmp}__${r.codFunc}`)}"><td colspan="7" style="white-space:pre-wrap"><b>Observação de conferência:</b> ${esc(r.obsConferencia)}</td></tr>`
   })
   tabRel.innerHTML=`<tbody>${htmlRel||'<tr><td>Nenhum lançamento encontrado.</td></tr>'}</tbody>`
 }
@@ -2669,10 +2691,15 @@ As competências anteriores continuarão preservadas.`,sugerida)
   emp.restauradoApartir=inicio
   saved()
 }
+function atualizarVisibilidadeCadastroFuncionario(){
+  const box=document.getElementById("funCadastroDetalhes")
+  if(box)box.style.display=document.getElementById("funEmpCad")?.value?"block":"none"
+}
 function popularFunSelects(){
   const lista=empresasFuncionarioVisiveis()
   const opts=lista.map(e=>`<option value="${esc(e.codigo)}">${esc(e.codigo)} - ${esc(e.nome)}${empresaInativaCadastro(e)?" (INATIVO)":""}</option>`).join("")
-  ;["funEmpCad","funEmpFiltro"].forEach(id=>{const s=document.getElementById(id); if(s){const v=s.value; s.innerHTML=(id==="funEmpFiltro"?'<option value="">Todas</option>':"")+opts; if(v&&lista.some(e=>String(e.codigo)===String(v)))s.value=v}})
+  ;["funEmpCad","funEmpFiltro"].forEach(id=>{const s=document.getElementById(id); if(s){const v=s.value; s.innerHTML=(id==="funEmpFiltro"?'<option value="">Todas</option>':'<option value="">Selecione a empresa...</option>')+opts; if(v&&lista.some(e=>String(e.codigo)===String(v)))s.value=v}})
+  atualizarVisibilidadeCadastroFuncionario()
   const auto=document.getElementById("funAutoEvento"); if(auto){const v=auto.value; auto.innerHTML='<option value="">Sem automático</option>'+optsEventos(""); if(v)auto.value=v}
   const pad=document.getElementById("funEventoPadrao"); if(pad){const v=pad.value; pad.innerHTML=optsEventos(""); if(v)pad.value=v}
 }
@@ -3200,6 +3227,9 @@ function editarAutoEventoTemp(i){
   funAutoEditIndex=i
   funAutoEvento.value=ev.evento||""; funAutoQtd.value=ev.qtd||""; if(document.getElementById("funAutoInicio"))funAutoInicio.value=ev.inicio||""; if(document.getElementById("funAutoFim"))funAutoFim.value=ev.fim||""
 }
+function periodosEventosSobrepostos(a,b){
+  return (!a.fim||!b.inicio||a.fim>=b.inicio)&&(!b.fim||!a.inicio||b.fim>=a.inicio)
+}
 function addEventoPadraoTemp(){
   if(!funEventoPadrao.value)return alert("Selecione o evento padrão.")
   const obj={desc:funEventoPadrao.value,valor:valorPadrao(funEventoValor.value||""),obs:funEventoObs.value||"",inicio:funEventoInicio.value||"",fim:funEventoFim.value||"",status:"Pendente"}
@@ -3208,7 +3238,7 @@ function addEventoPadraoTemp(){
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
-    const idx=funEventoTemp.findIndex(a=>a.desc===obj.desc)
+    const idx=funEventoTemp.findIndex(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj))
     if(idx>=0){
       if(!confirm("Este evento padrão já existe para o funcionário. Deseja alterar o cadastro existente?"))return
       funEventoTemp[idx]=obj
@@ -3503,7 +3533,7 @@ function carregarFuncionarioCadastro(empCod,funCod){
   const f=emp?.funcionarios.find(x=>x.codigo===funCod)
   if(!f)return
   // Preenche os campos originais (usados por salvarFuncionarioCadastro)
-  funEmpCad.value=empCod; funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; if(document.getElementById("funAdmCad"))funAdmCad.value=f.admissao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
+  funEmpCad.value=empCod; atualizarVisibilidadeCadastroFuncionario(); funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; if(document.getElementById("funAdmCad"))funAdmCad.value=f.admissao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
   funAutoTemp=clone(f.autoEventos||[]).map(a=>({...a,inicio:a.inicio||"",fim:a.fim||""}))
   funEventoTemp=clone(f.eventos||[])
   funAutoEvento.value=""; funAutoQtd.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""
@@ -3668,7 +3698,7 @@ function mFunAddPadrao(){
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
-    const idx=funEventoTemp.findIndex(a=>a.desc===ev)
+    const idx=funEventoTemp.findIndex(a=>a.desc===ev&&periodosEventosSobrepostos(a,obj))
     if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funEventoTemp[idx]=obj}
     else{if(!confirm("Cadastrar este evento padrão?"))return; funEventoTemp.push(obj)}
   }
@@ -3890,17 +3920,18 @@ function montarHtmlRelatorioPDF(){
   const excluidos=codigosExcluidosRelatorio()
   const rows=relRows(competenciaRel, empresasRelatorioSelecionadas())
   let atualEmp="", atualFunc="", corpo=""
-  rows.forEach(r=>{
+  rows.forEach((r,idx)=>{
     if(r.codEmp!==atualEmp){
       atualEmp=r.codEmp; atualFunc=""
-      corpo+=`<tr class="empresa"><td colspan="7">Empresa ${esc(r.codEmp)} - ${esc(r.empresa)} | Sindicato: ${esc(r.sind)} | Data-base: ${esc(r.db)} | Status: ${esc(r.dbStatus)} ${r.dissidio?" | "+esc(r.dissidio):""}</td></tr>`
+      corpo+=`<tr class="empresa"><td colspan="6">Empresa ${esc(r.codEmp)} - ${esc(r.empresa)} | Sindicato: ${esc(r.sind)} | Data-base: ${esc(r.db)} | Status: ${esc(r.dbStatus)} ${r.dissidio?" | "+esc(r.dissidio):""}</td></tr>`
     }
     if(r.codFunc!==atualFunc){
       atualFunc=r.codFunc
-      corpo+=`<tr class="func"><td colspan="7" style="text-align:left;padding-left:0"><span style="font-weight:950;font-size:12.8px;color:#1B3A6B">${esc(r.codFunc)} - ${esc(r.func)}</span> | ${esc(r.funcao||"Sem função")} | <span class="salario">Salário: R$ ${money(r.sal)}</span></td></tr>`
-      corpo+=`<tr><th class="pdf-cod">Cód. Evento</th><th>Evento</th><th class="pdf-valor">Valor/Qtd</th><th class="pdf-data">Início</th><th class="pdf-data">Fim</th><th>Observação</th><th>Evento Padrão</th></tr>`
+      corpo+=`<tr class="func"><td colspan="6" style="text-align:left;padding-left:0"><span style="font-weight:950;font-size:12.8px;color:#1B3A6B">${esc(r.codFunc)} - ${esc(r.func)}</span> | ${esc(r.funcao||"Sem função")} | <span class="salario">Salário: R$ ${money(r.sal)}</span></td></tr>`
+      corpo+=`<tr><th class="pdf-cod">Cód. Evento</th><th>Evento</th><th class="pdf-valor">Valor/Qtd</th><th class="pdf-data">Início</th><th class="pdf-data">Fim</th><th>Evento Padrão</th></tr>`
     }
-    corpo+=`<tr><td class="pdf-cod"><b>${esc(r.codEvento)}</b></td><td>${esc(r.evento)}</td><td class="pdf-valor">${esc(r.valor)}</td><td class="pdf-data">${esc(fmtMesAnoRel(r.inicio||""))}</td><td class="pdf-data">${esc(fmtMesAnoRel(r.fim||""))}</td><td class="pdf-obs">${esc(r.obs)}</td><td>${esc(r.eventoPadrao||"Não")}</td></tr>`
+    corpo+=`<tr><td class="pdf-cod"><b>${esc(r.codEvento)}</b></td><td>${esc(r.evento)}</td><td class="pdf-valor">${esc(r.valor)}</td><td class="pdf-data">${esc(fmtMesAnoRel(r.inicio||""))}</td><td class="pdf-data">${esc(fmtMesAnoRel(r.fim||""))}</td><td>${esc(r.eventoPadrao||"Não")}</td></tr>`
+    if((idx===rows.length-1||rows[idx+1].codEmp!==r.codEmp||rows[idx+1].codFunc!==r.codFunc)&&r.obsConferencia)corpo+=`<tr class="func"><td colspan="6" style="white-space:pre-wrap;text-align:left"><b>Observação de conferência:</b> ${esc(r.obsConferencia)}</td></tr>`
   })
   const alvo=empRel?`Empresa selecionada: ${esc(empRel)}`:"Todas as empresas"
   const exc=(!empRel && excluidos.length)?` | Excluídas: ${esc(excluidos.join(", "))}`:""
@@ -4012,7 +4043,7 @@ function calcRegraFuncionario(regra,c,desconsiderarFeriados){
   const cRef=c||regraComp()
   const contagem=calcDiasSemanaNoMes(cRef,desconsiderarFeriados)
   const resumo=calcResumoCalMes(cRef,desconsiderarFeriados)
-  let totalMin=0
+  let totalMin=0, totalValor=0
   const linhasCalc=(regra.linhas||[]).map(l=>{
     const diasMin=hhmmParaMin(l.hh,l.mm)
     let qtdDias=0
@@ -4020,7 +4051,9 @@ function calcRegraFuncionario(regra,c,desconsiderarFeriados){
     ;(l.dias||[]).forEach(d=>{qtdDias+=contagem[d];diasNomes.push(DIAS_SEMANA_LABEL[d])})
     const subMin=diasMin*qtdDias
     totalMin+=subMin
-    return {label:`${minParaHHMM(diasMin)} × ${qtdDias} dias (${diasNomes.join("/")})`,total:minParaHHMM(subMin),subMin,qtdDias}
+    const subValor=Number(l.valorDia||0)*qtdDias
+    totalValor+=subValor
+    return {subValor,label:`${minParaHHMM(diasMin)} × ${qtdDias} dias (${diasNomes.join("/")})`,total:minParaHHMM(subMin),subMin,qtdDias}
   })
   let fictaMin=0
   let fictaLabel=""
@@ -4037,7 +4070,7 @@ function calcRegraFuncionario(regra,c,desconsiderarFeriados){
     totalMin+=fictaMin
     fictaLabel=`Ficta ${minParaHHMM(hhmmParaMin(regra.fictaHH,regra.fictaMM))} × ${resumo.uteis} dias úteis`
   }
-  return {linhasCalc,fictaMin,fictaLabel,totalMin,totalHHMM:minParaHHMM(totalMin),isNoturno}
+  return {linhasCalc,fictaMin,fictaLabel,totalMin,totalHHMM:minParaHHMM(totalMin),totalValor,isNoturno}
 }
 function normalizarRegrasFuncionario(fun){
   if(!Array.isArray(fun.regrasDiaSemana))fun.regrasDiaSemana=[]
@@ -4049,11 +4082,11 @@ function aplicarRegrasDiaSemana(emp,fun,fsObj,c){
   if(!fun.regrasDiaSemana.length)return
   if(!Array.isArray(fsObj.eventos))fsObj.eventos=[]
   fun.regrasDiaSemana.forEach(regra=>{
-    if(regra.inativa)return
+    if(regra.inativa&&!regra.fim)return
     if(!eventoVigenteNaCompetencia(regra,cRef))return
     const desconsiderar=!!(regra.desconsiderarFeriados&&regra.desconsiderarFeriados[cRef])
     const calc=calcRegraFuncionario(regra,cRef,desconsiderar)
-    if(!calc.totalMin)return
+    if(!calc.totalMin&&!calc.totalValor)return
     const label=regra.evento||""
     const partes=calc.linhasCalc.map(l=>{
       const diasAbr=(l.label.match(/\(([^)]+)\)/)||["",""])[1].split("/").map(d=>d.slice(0,2)).join("/")
@@ -4063,10 +4096,10 @@ function aplicarRegrasDiaSemana(emp,fun,fsObj,c){
     })
     if(calc.fictaLabel)partes.push("Fic="+minParaHHMM(calc.fictaMin))
     partes.push("Tot="+calc.totalHHMM)
+    if(calc.totalValor)partes.push("Valor=R$"+money(calc.totalValor))
     const obs="RE:"+partes.join("|")
-    const existing=fsObj.eventos.find(ev=>ev.origem==="regra-especial"&&ev.desc===label)
-    if(existing){existing.valor=calc.totalHHMM;existing.obs=obs}
-    else fsObj.eventos.push({desc:label,valor:calc.totalHHMM,obs,inicio:regra.inicio||"",fim:regra.fim||"",status:"Pendente",origem:"regra-especial",auto:false})
+    if(calc.totalMin)fsObj.eventos.push({desc:label,valor:calc.totalHHMM,obs,inicio:regra.inicio||"",fim:regra.fim||"",status:"Pendente",origem:"regra-especial",auto:false})
+    if(calc.totalValor)fsObj.eventos.push({desc:label,valor:money(calc.totalValor),obs:"Valor por dia: "+calc.linhasCalc.filter(l=>l.subValor).map(l=>l.qtdDias+" dias = R$ "+money(l.subValor)).join("; "),inicio:regra.inicio||"",fim:regra.fim||"",status:"Pendente",origem:"regra-especial",auto:false})
   })
 }
 
@@ -4177,10 +4210,10 @@ function renderRegras(){
     const calc=calcRegraFuncionario(regra,c,desc)
     const tags=(regra.linhas||[]).map(l=>{
       const diasNomes=(l.dias||[]).map(d=>DIAS_SEMANA_LABEL[d]).join("/")
-      return `<span style="background:#dbeafe;color:#1e40af;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:3px">${diasNomes} = ${minParaHHMM(hhmmParaMin(l.hh,l.mm))}</span>`
+      return `<span style="background:#dbeafe;color:#1e40af;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:3px">${diasNomes} = ${minParaHHMM(hhmmParaMin(l.hh,l.mm))}${Number(l.valorDia||0)?" · R$ "+money(l.valorDia)+"/dia":""}</span>`
     }).join("")
     const fictaTag=(regra.fictaHH||regra.fictaMM)?`<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:3px">+ Ficta ${minParaHHMM(hhmmParaMin(regra.fictaHH,regra.fictaMM))}/dia</span>`:""
-    const linhasCalcHtml=calc.linhasCalc.map(l=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(l.label)}</span><span style="font-weight:700;color:var(--ink)">${l.total}</span></div>`).join("")
+    const linhasCalcHtml=calc.linhasCalc.map(l=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(l.label)}</span><span style="font-weight:700;color:var(--ink)">${l.total}${l.subValor?" · R$ "+money(l.subValor):""}</span></div>`).join("")
     const fictaHtml=calc.fictaLabel?`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(calc.fictaLabel)}</span><span style="font-weight:700;color:var(--ink)">${minParaHHMM(calc.fictaMin)}</span></div>`:""
     const chkId=`chkDesc_${emp.codigo}_${fun.codigo}_${idx}`
     const periodoTag=regra.inicio||regra.fim?`<span style="background:#f1f5f9;color:var(--muted);border-radius:6px;padding:1px 8px;font-size:11px;margin-left:6px">${regra.inicio?fmtMesRefLocal(regra.inicio):"início"} → ${regra.fim?fmtMesRefLocal(regra.fim):"sem fim"}</span>`:""
@@ -4195,9 +4228,9 @@ function renderRegras(){
         </div>
       </div>
       <div style="margin-bottom:8px">${tags}${fictaTag}</div>
-      <div style="border-top:1px solid var(--line);padding-top:8px;margin-bottom:8px">${linhasCalcHtml}${fictaHtml}<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--ink);padding:6px 0;border-top:1.5px solid var(--line);margin-top:4px"><span>Total — lança automático</span><span>${calc.totalHHMM}</span></div></div>
+      <div style="border-top:1px solid var(--line);padding-top:8px;margin-bottom:8px">${linhasCalcHtml}${fictaHtml}<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--ink);padding:6px 0;border-top:1.5px solid var(--line);margin-top:4px"><span>Total — lança automático</span><span>${calc.totalMin?calc.totalHHMM:""}${calc.totalMin&&calc.totalValor?" · ":""}${calc.totalValor?"R$ "+money(calc.totalValor):""}</span></div></div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <div style="font-size:20px;font-weight:700;color:var(--pri)">${calc.totalHHMM}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--pri)">${calc.totalMin?calc.totalHHMM:""}${calc.totalMin&&calc.totalValor?" · ":""}${calc.totalValor?"R$ "+money(calc.totalValor):""}</div>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
           <input type="checkbox" id="${chkId}" ${desc?"checked":""} onchange="toggleDesconsiderarFeriado('${esc(emp.codigo)}','${esc(fun.codigo)}',${idx},this.checked)">
           Desconsiderar feriados este mês
@@ -4263,7 +4296,7 @@ function renderRegraLinhasList(){
   if(!regraLinhasTemp.length){box.innerHTML='<p style="font-size:13px;color:var(--muted)">Nenhuma linha adicionada.</p>';return}
   box.innerHTML=regraLinhasTemp.map((l,i)=>{
     const diasNomes=(l.dias||[]).map(d=>DIAS_SEMANA_LABEL[d]).join("/")
-    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:0.5px solid var(--line)"><b style="font-size:13px">${diasNomes} = ${minParaHHMM(hhmmParaMin(l.hh,l.mm))}/dia</b><button class="btn small red" onclick="regraLinhasTemp.splice(${i},1);renderRegraLinhasList()">Remover</button></div>`
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:0.5px solid var(--line)"><b style="font-size:13px">${diasNomes} = ${minParaHHMM(hhmmParaMin(l.hh,l.mm))}/dia${Number(l.valorDia||0)?" · R$ "+money(l.valorDia)+"/dia":""}</b><button class="btn small red" onclick="regraLinhasTemp.splice(${i},1);renderRegraLinhasList()">Remover</button></div>`
   }).join("")
 }
 function addRegraLinha(){
@@ -4271,11 +4304,15 @@ function addRegraLinha(){
   if(!dias.length)return alert("Selecione pelo menos um dia da semana.")
   const hh=document.getElementById("rLinhaHH")?.value||"0"
   const mm=document.getElementById("rLinhaMM")?.value||"0"
-  if(!parseInt(hh)&&!parseInt(mm))return alert("Informe as horas por dia.")
-  regraLinhasTemp.push({dias,hh:String(parseInt(hh)||0),mm:String(parseInt(mm)||0)})
+  const valorTexto=(document.getElementById("rLinhaValor")?.value||"").trim()
+  const valorDia=valorTexto?Number(valorTexto.includes(",")?valorTexto.replace(/\./g,"").replace(",","."):valorTexto):0
+  if(valorTexto&&(!Number.isFinite(valorDia)||valorDia<0))return alert("Informe um valor válido.")
+  if(!parseInt(hh)&&!parseInt(mm)&&!valorDia)return alert("Informe horas ou valor por dia.")
+  regraLinhasTemp.push({dias,hh:String(parseInt(hh)||0),mm:String(parseInt(mm)||0),valorDia})
   DIAS_SEMANA_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false})
   if(document.getElementById("rLinhaHH"))rLinhaHH.value=""
   if(document.getElementById("rLinhaMM"))rLinhaMM.value=""
+  if(document.getElementById("rLinhaValor"))rLinhaValor.value=""
   renderRegraLinhasList()
 }
 function abrirModalRegra(empCod,funCod,regraIdx){
@@ -4349,7 +4386,7 @@ function salvarModalRegra(){
   const funCod=document.getElementById("regraFunSel")?.value
   const evento=document.getElementById("regraEvtSel")?.value
   if(!empCod||!funCod||!evento)return alert("Selecione empresa, funcionário e evento.")
-  if(!regraLinhasTemp.length)return alert("Adicione pelo menos uma linha de dias/horas.")
+  if(!regraLinhasTemp.length)return alert("Adicione pelo menos uma linha de dias, horas ou valor.")
   const emp=state.empresas.find(e=>e.codigo===empCod)
   const fun=emp?.funcionarios.find(f=>f.codigo===funCod)
   if(!fun)return alert("Funcionário não localizado.")
@@ -4363,6 +4400,8 @@ function salvarModalRegra(){
     fim:document.getElementById("regraFim")?.value||"",
     desconsiderarFeriados:{}
   }
+  if(regra.inicio&&regra.fim&&regra.inicio>regra.fim)return alert("O início não pode ser posterior ao fim.")
+  if(fun.regrasDiaSemana.some((r,i)=>i!==regraEditandoIdx&&r.evento===evento&&periodosEventosSobrepostos(r,regra)))return alert("Já existe regra deste código com período sobreposto. Informe início e fim fora do período anterior para preservar o histórico.")
   if(!confirm((regraEditandoIdx!==null?"Salvar alterações da":"Cadastrar nova")+" regra especial?"))return
   if(regraEditandoIdx!==null&&regraEditandoIdx!==undefined){
     const anterior=fun.regrasDiaSemana[regraEditandoIdx]
