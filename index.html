@@ -380,6 +380,7 @@ body.modal-aberto{overflow:hidden}
     <div><label>Telefone/WhatsApp</label><input id="sindContatoCad" placeholder="Telefone"></div>
     <div><label>E-mail</label><input id="sindEmailCad" placeholder="email@sindicato.com.br"></div>
     <div><label>Data-base</label><select id="sindDataBaseCad"><option value="">Selecione...</option><option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option></select></div>
+    <div><label>Status da data-base</label><select id="sindStatusDataBaseCad"><option value="">Manter status atual das empresas</option><option>Em dia</option><option>Aguardando</option><option value="Vencida">Vencido</option></select></div>
     <div><label>Benefício</label><select id="sindBeneficioCad"><option>Normal</option><option>Especial</option><option>Não possui</option></select></div>
     <div class="sind-obs"><label>Observações</label><input id="sindObsCad" placeholder="Convenção, benefício, boleto, particularidades..."></div>
     <div><label>Abre domingos/feriados?</label><select id="sindDomingoFeriadoCad"><option value="">Não informado</option><option>Sim</option><option>Não</option></select></div>
@@ -901,7 +902,8 @@ body.modal-aberto{overflow:hidden}
       <div><label>Telefone/WhatsApp</label><input id="sindContatoEdit"></div>
       <div><label>E-mail</label><input id="sindEmailEdit"></div>
       <div><label>Data-base</label><select id="sindDataBaseEdit"><option value="">Selecione...</option><option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option><option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option><option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option></select></div>
-      <div><label>Benefício</label><select id="sindBeneficioEdit"><option>Normal</option><option>Especial</option><option>Não possui</option></select></div>
+      <div><label>Status da data-base</label><select id="sindStatusDataBaseEdit"><option value="">Manter status atual das empresas</option><option>Em dia</option><option>Aguardando</option><option value="Vencida">Vencido</option></select></div>
+    <div><label>Benefício</label><select id="sindBeneficioEdit"><option>Normal</option><option>Especial</option><option>Não possui</option></select></div>
       <div><label>Abre domingos/feriados?</label><select id="sindDomingoFeriadoEdit"><option value="">Não informado</option><option>Sim</option><option>Não</option></select></div>
       <div class="sind-obs"><label>Observações</label><input id="sindObsEdit"></div>
       <div class="sind-resumo"><label>Resumo da convenção / circular</label><textarea id="sindResumoConvencaoEdit" class="panel-notes"></textarea></div>
@@ -1632,6 +1634,23 @@ function formatMoneyInput(v){
 }
 function statusClass(v){return v==="Conferido"?"status-conferido":v==="Lançado"?"status-lancado":v==="Com observação"?"status-observacao":v==="Não lançar"?"status-nao":"status-pendente"}
 function dbClass(v){v=String(v||"Aguardando").toLowerCase(); if(v.includes("em dia"))return "db-em-dia"; if(v.includes("vencida"))return "db-vencida"; return "db-aguardando"}
+function sindicatoStatusReferencia(nome){
+  return (state.sindicatos||[]).find(s=>String(s.nome||"").trim()===String(nome||"").trim()&&s.statusDataBase)
+}
+function sincronizarStatusSindicato(s){
+  if(!s||!s.statusDataBase)return
+  const aplicar=item=>{item.statusDataBase=s.statusDataBase; if(s.dataBaseEmDiaAno)item.dataBaseEmDiaAno=s.dataBaseEmDiaAno; else delete item.dataBaseEmDiaAno}
+  ;(state.empresas||[]).forEach(emp=>{
+    if(String(emp.sindicato||"").trim()===String(s.nome||"").trim())aplicar(emp)
+    ;(emp.sindicatosAdicionaisDetalhes||[]).forEach(item=>{if(String(item.nome||"").trim()===String(s.nome||"").trim())aplicar(item)})
+  })
+}
+function salvarStatusSindicato(s,valor){
+  if(!valor)return
+  s.statusDataBase=valor
+  if(valor==="Em dia")s.dataBaseEmDiaAno=anoCompetencia(); else delete s.dataBaseEmDiaAno
+  sincronizarStatusSindicato(s)
+}
 function dataBaseReferencia(emp){
   const sind=(state.sindicatos||[]).find(s=>String(s.nome||"").trim()===String(emp.sindicato||"").trim())
   return (sind&&sind.dataBase)?sind.dataBase:(emp.dataBase||"")
@@ -1650,6 +1669,8 @@ function mesDataBaseNumero(emp){
   const num=parseInt(db); return isNaN(num)?0:num
 }
 function statusDB(emp){
+  const fonte=sindicatoStatusReferencia(emp.sindicato)
+  if(fonte)emp={...emp,statusDataBase:fonte.statusDataBase,dataBaseEmDiaAno:fonte.dataBaseEmDiaAno}
   const manual=emp.statusDataBase||"Em dia"
 
   // "Aguardando" é escolha manual da empresa e deve prevalecer.
@@ -2191,6 +2212,8 @@ function dataBaseNoMesValor(valor){
   return db.includes(mes) || (mapa[mesNum]||[]).some(x=>db.includes(x))
 }
 function statusDBSindicatoAdicional(item){
+  const fonte=sindicatoStatusReferencia(item.nome)
+  if(fonte)item={...item,dataBase:fonte.dataBase||item.dataBase,statusDataBase:fonte.statusDataBase,dataBaseEmDiaAno:fonte.dataBaseEmDiaAno}
   const manual=item.statusDataBase||"Em dia"
   if(manual==="Aguardando")return "Aguardando"
   const mdb=mesDataBaseNumeroValor(item.dataBase)
@@ -3008,6 +3031,7 @@ function abrirEditarSindicato(i){
   document.getElementById("modalSindEditTitulo").textContent="Editar sindicato — "+(s.nome||"")
   sindNomeEdit.value=s.nome||""; sindRazaoEdit.value=s.razao||""; sindCnpjEdit.value=s.cnpj||""
   sindContatoNomeEdit.value=s.contatoNome||""; sindContatoEdit.value=s.contato||""; sindEmailEdit.value=s.email||""
+  document.getElementById("sindStatusDataBaseEdit").value=s.statusDataBase||""
   sindDataBaseEdit.value=s.dataBase||""; sindBeneficioEdit.value=s.beneficio||"Normal"
   sindDomingoFeriadoEdit.value=s.abreDomingoFeriado||""
   sindObsEdit.value=s.obs||""; sindResumoConvencaoEdit.value=s.resumoConvencao||""
@@ -3021,6 +3045,7 @@ function salvarEditarSindicato(){
   const nome=sindNomeEdit.value.trim(); if(!nome)return alert("Informe o nome do sindicato.")
   s.nome=nome; s.razao=sindRazaoEdit.value.trim(); s.cnpj=sindCnpjEdit.value.trim()
   s.contatoNome=sindContatoNomeEdit.value.trim(); s.contato=sindContatoEdit.value.trim(); s.email=sindEmailEdit.value.trim()
+  salvarStatusSindicato(s,document.getElementById("sindStatusDataBaseEdit").value)
   s.dataBase=normalizarMesExtenso(sindDataBaseEdit.value); s.beneficio=sindBeneficioEdit.value
   s.abreDomingoFeriado=sindDomingoFeriadoEdit.value||""
   s.obs=sindObsEdit.value.trim(); s.resumoConvencao=(sindResumoConvencaoEdit.value||"").trim()
@@ -3155,6 +3180,7 @@ function salvarSindicatoCadastro(){
   s.contatoNome=sindContatoNomeCad.value.trim()
   s.contato=sindContatoCad.value.trim()
   s.email=sindEmailCad.value.trim()
+  salvarStatusSindicato(s,document.getElementById("sindStatusDataBaseCad").value)
   s.dataBase=normalizarMesExtenso(sindDataBaseCad.value)
   s.beneficio=sindBeneficioCad.value
   s.obs=sindObsCad.value.trim()
@@ -3170,10 +3196,12 @@ function salvarSindicatoCadastro(){
   sindLiberacaoTemp=null; renderSindicatoLiberacaoTemp()
   sindicatoAnexosTemp=[]; renderSindicatoAnexosTemp()
   sindBeneficioCad.value="Normal"
+  document.getElementById("sindStatusDataBaseCad").value=""
   saved()
 }
 function carregarSindicatoCadastro(i){
   const s=state.sindicatos[i]; if(!s)return
+  document.getElementById("sindStatusDataBaseCad").value=s.statusDataBase||""
   sindNomeCad.value=s.nome||""; sindRazaoCad.value=s.razao||""; sindCnpjCad.value=s.cnpj||""; sindContatoNomeCad.value=s.contatoNome||""; sindContatoCad.value=s.contato||""; sindEmailCad.value=s.email||""; sindDataBaseCad.value=s.dataBase||""; sindBeneficioCad.value=s.beneficio||"Normal"; sindObsCad.value=s.obs||""
   if(document.getElementById("sindResumoConvencaoCad"))sindResumoConvencaoCad.value=s.resumoConvencao||""
   sindicatoAnexosTemp=Array.isArray(s.anexos)?clone(s.anexos):[]; renderSindicatoAnexosTemp()
@@ -4122,13 +4150,18 @@ function observacaoValorRegra(regra,calc){
   }).filter(Boolean)
   return "RE: "+linhas.join("; ")+" | Total: R$ "+money(calc.totalValor)
 }
+function valorNumericoRegra(valor){
+  const texto=String(valor??"").trim()
+  if(!texto||texto.includes(":"))return NaN
+  return Number(texto.includes(",")?texto.replaceAll(".","").replace(",","."):texto)
+}
 function atualizarObservacoesValoresRegras(fun,fsObj,c){
   ;(fun.regrasDiaSemana||[]).forEach(regra=>{
     if((regra.inativa&&!regra.fim)||!eventoVigenteNaCompetencia(regra,c))return
     const calc=calcRegraFuncionario(regra,c,!!regra.desconsiderarFeriados?.[c])
     if(!calc.totalValor)return
     ;(fsObj.eventos||[]).forEach(ev=>{
-      if(ev.origem==="regra-especial"&&ev.desc===regra.evento&&ev.valor===money(calc.totalValor)&&(ev.inicio||"")===(regra.inicio||"")&&(ev.fim||"")===(regra.fim||""))ev.obs=observacaoValorRegra(regra,calc)
+      if(ev.origem==="regra-especial"&&ev.desc===regra.evento&&Math.abs(valorNumericoRegra(ev.valor)-calc.totalValor)<0.005&&(ev.inicio||"")===(regra.inicio||"")&&(ev.fim||"")===(regra.fim||""))ev.obs=observacaoValorRegra(regra,calc)
     })
   })
 }
@@ -4272,7 +4305,7 @@ function renderRegras(){
       return `<span style="background:#dbeafe;color:#1e40af;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:3px">${diasNomes} = ${minParaHHMM(hhmmParaMin(l.hh,l.mm))}${Number(l.valorDia||0)?" · R$ "+money(l.valorDia)+"/dia":""}</span>`
     }).join("")
     const fictaTag=(regra.fictaHH||regra.fictaMM)?`<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:3px">+ Ficta ${minParaHHMM(hhmmParaMin(regra.fictaHH,regra.fictaMM))}/dia</span>`:""
-    const linhasCalcHtml=calc.linhasCalc.map(l=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(l.label)}</span><span style="font-weight:700;color:var(--ink)">${l.total}${l.subValor?" · R$ "+money(l.subValor):""}</span></div>`).join("")
+    const linhasCalcHtml=calc.linhasCalc.map(l=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(l.label)}${l.subValor?" · "+esc((regra.linhas[calc.linhasCalc.indexOf(l)]?.dias||[]).map(d=>DIAS_SEMANA_LABEL[d]).join("/"))+": "+l.qtdDias+" dias × R$ "+money(l.valorDia)+" por dia":""}</span><span style="font-weight:700;color:var(--ink)">${l.total}${l.subValor?" · R$ "+money(l.subValor):""}</span></div>`).join("")
     const fictaHtml=calc.fictaLabel?`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;border-bottom:0.5px solid var(--line)"><span>${esc(calc.fictaLabel)}</span><span style="font-weight:700;color:var(--ink)">${minParaHHMM(calc.fictaMin)}</span></div>`:""
     const chkId=`chkDesc_${emp.codigo}_${fun.codigo}_${idx}`
     const periodoTag=regra.inicio||regra.fim?`<span style="background:#f1f5f9;color:var(--muted);border-radius:6px;padding:1px 8px;font-size:11px;margin-left:6px">${regra.inicio?fmtMesRefLocal(regra.inicio):"início"} → ${regra.fim?fmtMesRefLocal(regra.fim):"sem fim"}</span>`:""
@@ -5552,7 +5585,7 @@ function gerarPDFGuiasSituacao(){
   const titulo= todas?'Situação das guias — todas as competências':'Situação das guias — '+fmtComp(c);
   abrirPDFModuloTeste(titulo,'Status das guias por empresa','Período: '+(todas?'Todas as competências':fmtComp(c))+' | Empresa: '+(empF?guiaNomeEmp(empF):'Todas')+' | Status: '+(stF||'Todos'),headers,rows);
 }
-function renderAll(){renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
+function renderAll(){(state.sindicatos||[]).forEach(sincronizarStatusSindicato);renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
 init();
 </script>
 <script>
