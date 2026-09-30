@@ -4146,9 +4146,9 @@ function observacaoValorRegra(regra,calc){
   const linhas=calc.linhasCalc.map((l,i)=>{
     if(!l.subValor)return ""
     const dias=(regra.linhas[i]?.dias||[]).map(d=>DIAS_SEMANA_LABEL[d]).join("/")
-    return dias+": "+l.qtdDias+" dias × R$ "+money(l.valorDia)+" por dia = R$ "+money(l.subValor)
+    return dias+": "+l.qtdDias+" dias × R$ "+money(l.valorDia)+" por dia"
   }).filter(Boolean)
-  return "RE: "+linhas.join("; ")+" | Total: R$ "+money(calc.totalValor)
+  return linhas.join("; ")
 }
 function valorNumericoRegra(valor){
   const texto=String(valor??"").trim()
@@ -4161,7 +4161,7 @@ function atualizarObservacoesValoresRegras(fun,fsObj,c){
     const calc=calcRegraFuncionario(regra,c,!!regra.desconsiderarFeriados?.[c])
     if(!calc.totalValor)return
     ;(fsObj.eventos||[]).forEach(ev=>{
-      if(ev.origem==="regra-especial"&&ev.desc===regra.evento&&Math.abs(valorNumericoRegra(ev.valor)-calc.totalValor)<0.005&&(ev.inicio||"")===(regra.inicio||"")&&(ev.fim||"")===(regra.fim||""))ev.obs=observacaoValorRegra(regra,calc)
+      if(ev.origem==="regra-especial"&&ev.desc===regra.evento&&!String(ev.valor??"").includes(":")&&(ev.inicio||"")===(regra.inicio||"")&&(ev.fim||"")===(regra.fim||""))ev.obs=observacaoValorRegra(regra,calc)
     })
   })
 }
@@ -5585,7 +5585,7 @@ function gerarPDFGuiasSituacao(){
   const titulo= todas?'Situação das guias — todas as competências':'Situação das guias — '+fmtComp(c);
   abrirPDFModuloTeste(titulo,'Status das guias por empresa','Período: '+(todas?'Todas as competências':fmtComp(c))+' | Empresa: '+(empF?guiaNomeEmp(empF):'Todas')+' | Status: '+(stF||'Todos'),headers,rows);
 }
-function renderAll(){(state.sindicatos||[]).forEach(sincronizarStatusSindicato);renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); aplicarRegrasEspeciaisGlobal(); renderRegras(); painelMsgLoad(); backup()}
+function renderAll(){(state.sindicatos||[]).forEach(sincronizarStatusSindicato);aplicarRegrasEspeciaisGlobal();renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); renderRegras(); painelMsgLoad(); backup()}
 init();
 </script>
 <script>
