@@ -1,0 +1,2 @@
+function renderAll(){(state.sindicatos||[]).forEach(sincronizarStatusSindicato);aplicarRegrasEspeciaisGlobal();renderCalendario(); popularSindicatos(); popularFunSelects(); renderKpis(); renderAlertas(); renderFechamento(); renderRel(); renderEmp(); renderFun(); renderSindicatos(); renderEventos(); renderEventosEmpresa(); renderASO(); renderLaudos(); renderFerias(); renderGuias(); renderRegras(); painelMsgLoad(); backup()}
+init();
