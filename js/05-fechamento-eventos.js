@@ -201,7 +201,7 @@ function normalizarOrdemEventosFechamento(fsObj){
     })
     .map(x=>x.ev)
 }
-function limparEventosFuturosNaoConferidos(emp,fun){
+async function limparEventosFuturosNaoConferidos(emp,fun){
   const chave=emp.codigo+"|"+fun.codigo
   const compAtual=comp()
   const eventosPadraoValidos=new Set((fun.eventos||[]).map(ev=>chaveEvento(ev)))
@@ -218,7 +218,7 @@ function limparEventosFuturosNaoConferidos(emp,fun){
     if(!fsObj || fsObj.status==="Conferido" || !Array.isArray(fsObj.eventos))return
     if(fsObj.eventos.some(deveRemover))temFuturo=true
   })
-  const excluirFuturas=temFuturo?confirm(`Você removeu evento automático/padrão do funcionário.
+  const excluirFuturas=temFuturo?await confirmar(`Você removeu evento automático/padrão do funcionário.
 
 Ele será excluído desta competência.
 

@@ -23,7 +23,7 @@ function renderEventos(){
   }).join("")+"</tbody>"
   popularEventosEmpresaSelect(); popularFunSelects()
 }
-function salvarEventoGlobal(i){
+async function salvarEventoGlobal(i){
   const ev=state.eventos[i]; if(!ev)return
   const oldLabel=labelEventoObj(ev)
   const novoCod=document.getElementById(`ev-cod-${i}`).value.trim()
@@ -34,9 +34,9 @@ function salvarEventoGlobal(i){
   const mudou=novoCod!==ev.codigo||novaDesc!==ev.descricao
   if(mudou){
     const qtd=state.empresas.filter(emp=>(emp.eventosPermitidos||[]).includes(oldLabel)).length
-    if(!confirm(`⚠️ Você está alterando o evento "${oldLabel}".\n\nIsso atualizará automaticamente:\n• ${qtd} empresa(s) vinculada(s)\n• Cadastro dos funcionários\n• Fechamentos já lançados\n\nDeseja salvar?`))return
+    if(!await confirmar(`⚠️ Você está alterando o evento "${oldLabel}".\n\nIsso atualizará automaticamente:\n• ${qtd} empresa(s) vinculada(s)\n• Cadastro dos funcionários\n• Fechamentos já lançados\n\nDeseja salvar?`))return
   }else{
-    if(!confirm("Salvar alterações deste evento?"))return
+    if(!await confirmar("Salvar alterações deste evento?"))return
   }
   ev.codigo=novoCod; ev.descricao=novaDesc; ev.tipo=novoTipo; ev.noturno=!!(document.getElementById(`ev-not-${i}`)?.checked)
   const newLabel=labelEventoObj(ev)
@@ -97,9 +97,9 @@ function atualizarTriObsNaoContribuiSindicato(){
   const status=document.getElementById("empContribSindStatusCad")?.value||"OK"
   tri.classList.toggle("hide",status!=="NAO"&&!String(empresaNaoContribuiSindicatoObsTemp||"").trim())
 }
-function abrirObsNaoContribuiSindicato(){
+async function abrirObsNaoContribuiSindicato(){
   const atual=empresaNaoContribuiSindicatoObsTemp||""
-  const texto=prompt("Anotação — empresa não vai contribuir com sindicato:\n\nEscreva a observação ou deixe em branco para apagar.",atual)
+  const texto=await perguntar("Anotação — empresa não vai contribuir com sindicato:\n\nEscreva a observação ou deixe em branco para apagar.",atual)
   if(texto===null)return
   empresaNaoContribuiSindicatoObsTemp=String(texto||"").trim()
   atualizarTriObsNaoContribuiSindicato()
@@ -249,8 +249,8 @@ function editarBeneficioSind(i){
   document.getElementById("sindBenefBtnAdd").textContent="Salvar item"
   sindBenefEditIndex=i
 }
-function removerBeneficioSind(i){
-  if(!confirm("Remover este item de benefício?"))return
+async function removerBeneficioSind(i){
+  if(!await confirmar("Remover este item de benefício?"))return
   sindBeneficiosTemp.splice(i,1); if(sindBenefEditIndex===i)sindBenefEditIndex=null
   salvarBeneficiosSind(); renderBeneficiosSind()
 }
@@ -381,14 +381,14 @@ function empresasVinculadasAoSindicato(nome){
     return detalhes.includes(alvo)
   })
 }
-function excluirSindicato(i){
+async function excluirSindicato(i){
   const s=state.sindicatos[i]; if(!s)return
   const vinc=empresasVinculadasAoSindicato(s.nome)
   if(vinc.length){
-    if(!confirm("⚠️ ATENÇÃO\n\nO sindicato \""+s.nome+"\" possui "+vinc.length+" empresa(s) vinculada(s):\n\n"+vinc.map(e=>"• "+(e.codigo?e.codigo+" - ":"")+e.nome).join("\n")+"\n\nSe excluir, essas empresas ficarão SEM esse sindicato vinculado.\n\nDeseja excluir mesmo assim?"))return
-    if(!confirm("Confirmar exclusão de \""+s.nome+"\"?\n\nEsta é a segunda e última confirmação. Não pode ser desfeita."))return
+    if(!await confirmar("⚠️ ATENÇÃO\n\nO sindicato \""+s.nome+"\" possui "+vinc.length+" empresa(s) vinculada(s):\n\n"+vinc.map(e=>"• "+(e.codigo?e.codigo+" - ":"")+e.nome).join("\n")+"\n\nSe excluir, essas empresas ficarão SEM esse sindicato vinculado.\n\nDeseja excluir mesmo assim?"))return
+    if(!await confirmar("Confirmar exclusão de \""+s.nome+"\"?\n\nEsta é a segunda e última confirmação. Não pode ser desfeita."))return
   }else{
-    if(!confirm("Excluir o sindicato \""+s.nome+"\"?\n\nEle não possui nenhuma empresa vinculada.\n\nEsta ação não pode ser desfeita."))return
+    if(!await confirmar("Excluir o sindicato \""+s.nome+"\"?\n\nEle não possui nenhuma empresa vinculada.\n\nEsta ação não pode ser desfeita."))return
   }
   state.sindicatos.splice(i,1)
   saved()

@@ -1,23 +1,23 @@
 function renderAutoTemp(){
   const box=document.getElementById("funAutoLista")
-  if(box)box.innerHTML=funAutoTemp.length?funAutoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.evento)}</b><span>${esc(a.qtd)} por dia útil</span><span>${a.inicio? "Início: "+esc(fmtMesRefLocal(a.inicio)):""}</span><span>${a.fim? "Fim: "+esc(fmtMesRefLocal(a.fim)):""}</span><button class="btn small out" onclick="editarAutoEventoTemp(${i})">Alterar</button><button class="btn small red" onclick="if(confirm('Excluir este evento automático?')){funAutoTemp.splice(${i},1);funAutoEditIndex=null;renderAutoTemp()}">Excluir</button></div>`).join(""):"Nenhum evento automático vinculado."
+  if(box)box.innerHTML=funAutoTemp.length?funAutoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.evento)}</b><span>${esc(a.qtd)} por dia útil</span><span>${a.inicio? "Início: "+esc(fmtMesRefLocal(a.inicio)):""}</span><span>${a.fim? "Fim: "+esc(fmtMesRefLocal(a.fim)):""}</span><button class="btn small out" onclick="editarAutoEventoTemp(${i})">Alterar</button><button class="btn small red" onclick="confirmar('Excluir este evento automático?').then(ok=>{if(ok){funAutoTemp.splice(${i},1);funAutoEditIndex=null;renderAutoTemp()}})">Excluir</button></div>`).join(""):"Nenhum evento automático vinculado."
   const bx=document.getElementById("funEventoLista")
-  if(bx)bx.innerHTML=funEventoTemp.length?funEventoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.desc)}</b><span>${esc(a.valor||"")}</span><span>${a.inicio? "Início: "+esc(fmtMesRefLocal(a.inicio)):""}</span><span>${a.fim? "Fim: "+esc(fmtMesRefLocal(a.fim)):""}</span><span>${esc(a.obs||"")}</span><button class="btn small out" onclick="editarEventoPadraoTemp(${i})">Alterar</button><button class="btn small red" onclick="if(confirm('Excluir este evento padrão do funcionário?')){funEventoTemp.splice(${i},1);funEventoEditIndex=null;renderAutoTemp()}">Excluir</button></div>`).join(""):"Nenhum evento padrão vinculado."
+  if(bx)bx.innerHTML=funEventoTemp.length?funEventoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.desc)}</b><span>${esc(a.valor||"")}</span><span>${a.inicio? "Início: "+esc(fmtMesRefLocal(a.inicio)):""}</span><span>${a.fim? "Fim: "+esc(fmtMesRefLocal(a.fim)):""}</span><span>${esc(a.obs||"")}</span><button class="btn small out" onclick="editarEventoPadraoTemp(${i})">Alterar</button><button class="btn small red" onclick="confirmar('Excluir este evento padrão do funcionário?').then(ok=>{if(ok){funEventoTemp.splice(${i},1);funEventoEditIndex=null;renderAutoTemp()}})">Excluir</button></div>`).join(""):"Nenhum evento padrão vinculado."
 }
-function addAutoEventoTemp(){
+async function addAutoEventoTemp(){
   if(!funAutoEvento.value||!funAutoQtd.value)return aviso("Informe evento e quantidade.")
   const obj={evento:funAutoEvento.value,qtd:funAutoQtd.value,inicio:(document.getElementById("funAutoInicio")?.value||""),fim:(document.getElementById("funAutoFim")?.value||"")}
   if(funAutoEditIndex!==null){
-    if(!confirm("Salvar alteração deste evento automático do funcionário?"))return
+    if(!await confirmar("Salvar alteração deste evento automático do funcionário?"))return
     funAutoTemp[funAutoEditIndex]=obj
     funAutoEditIndex=null
   }else{
     const idx=funAutoTemp.findIndex(a=>a.evento===obj.evento)
     if(idx>=0){
-      if(!confirm("Este evento automático já existe para o funcionário. Deseja alterar o cadastro existente?"))return
+      if(!await confirmar("Este evento automático já existe para o funcionário. Deseja alterar o cadastro existente?"))return
       funAutoTemp[idx]=obj
     }else{
-      if(!confirm("Cadastrar este evento automático no funcionário?"))return
+      if(!await confirmar("Cadastrar este evento automático no funcionário?"))return
       funAutoTemp.push(obj)
     }
   }
@@ -31,17 +31,17 @@ function editarAutoEventoTemp(i){
 function periodosEventosSobrepostos(a,b){
   return (!a.fim||!b.inicio||a.fim>=b.inicio)&&(!b.fim||!a.inicio||b.fim>=a.inicio)
 }
-function addEventoPadraoTemp(){
+async function addEventoPadraoTemp(){
   if(!funEventoPadrao.value)return aviso("Selecione o evento padrão.")
   const obj={desc:funEventoPadrao.value,valor:valorPadrao(funEventoValor.value||""),obs:funEventoObs.value||"",inicio:funEventoInicio.value||"",fim:funEventoFim.value||"",status:"Pendente"}
   if(funEventoEditIndex!==null){
-    if(!confirm("Salvar alteração deste evento padrão do funcionário?"))return
+    if(!await confirmar("Salvar alteração deste evento padrão do funcionário?"))return
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
     if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
     if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return aviso("Já existe este evento padrão em um período sobreposto. Use Alterar para editar o período anterior.")
-    if(!confirm("Cadastrar este evento padrão no funcionário?"))return
+    if(!await confirmar("Cadastrar este evento padrão no funcionário?"))return
     funEventoTemp.push(obj)
   }
   funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""; renderAutoTemp()
@@ -59,8 +59,8 @@ function limparFuncionarioForm(){
   funAutoEvento.value=""; if(document.getElementById("funAutoInicio"))funAutoInicio.value=""; if(document.getElementById("funAutoFim"))funAutoFim.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""; if(document.getElementById("funStatusCad"))funStatusCad.value="Ativo"
   funAutoTemp=[]; funEventoTemp=[]; funEventoEditIndex=null; funAutoEditIndex=null; renderAutoTemp()
 }
-function cancelarFuncionarioCadastro(){
-  if((funAutoTemp.length||funEventoTemp.length||funCodCad.value||funNomeCad.value)&&!confirm("Cancelar a inclusão/alteração do funcionário e limpar os itens?"))return
+async function cancelarFuncionarioCadastro(){
+  if((funAutoTemp.length||funEventoTemp.length||funCodCad.value||funNomeCad.value)&&!await confirmar("Cancelar a inclusão/alteração do funcionário e limpar os itens?"))return
   funcionarioEditando=null
   if(typeof funcionarioFormModo!=="undefined")funcionarioFormModo.textContent="Novo cadastro"
   if(typeof funcionarioFormCard!=="undefined")funcionarioFormCard.classList.remove("editing")
@@ -86,7 +86,7 @@ function limparEmpresaForm(){
   if(sel)sel.innerHTML='<option value="">Selecionar evento...</option>'
   // sem destaque visual no card inteiro da empresa
 }
-function salvarEmpresaCadastro(){
+async function salvarEmpresaCadastro(){
   const cod=empCodCad.value.trim()
   if(!cod)return aviso("Informe o código da empresa.")
 
@@ -103,9 +103,9 @@ function salvarEmpresaCadastro(){
   const jaExisteOutro=state.empresas.some(e=>e!==emp && String(e.codigo)===String(cod))
   if(jaExisteOutro)return aviso("Já existe outra empresa cadastrada com este código.")
 
-  if(!confirm((emp?"Salvar alterações da":"Cadastrar nova")+" empresa?"))return
+  if(!await confirmar((emp?"Salvar alterações da":"Cadastrar nova")+" empresa?"))return
   if(!emp){emp={codigo:cod,nome:"",tipo:"",statusCliente:"Ativo",clienteInativo:false,sindicato:"",vinculoSindicato:"Normal",dataBase:"",statusDataBase:"Em dia",dissidio:"",dataBaseObs:"",naoContribuiSindicatoObs:"",contribuicaoSindicatoStatus:"OK",possuiMaisDeUmSindicato:false,sindicatosAdicionais:[],funcionarios:[],eventosPermitidos:[]}; state.empresas.push(emp)}
-  emp.codigo=cod; emp.nome=empNomeCad.value.trim(); emp.tipo=empTipoCad.value.trim(); const novoStatusEmpresa=(document.getElementById("empClienteStatusCad")?.value||"Ativo"); if(!aplicarStatusEmpresaInativa(emp,novoStatusEmpresa))return; emp.sindicato=empSindCad.value.trim(); emp.vinculoSindicato=empVinculoSindCad.value; emp.dataBase=normalizarMesExtenso(empDbCad.value); emp.statusDataBase=empDbStatusCad.value; if(emp.statusDataBase==="Em dia")emp.dataBaseEmDiaAno=anoCompetencia(); else if(emp.statusDataBase==="Aguardando")delete emp.dataBaseEmDiaAno; emp.dissidio=empDissCad.value.trim(); emp.contribuicaoSindicatoStatus=(document.getElementById("empContribSindStatusCad")?.value||"OK"); emp.naoContribuiSindicatoObs=empresaNaoContribuiSindicatoObsTemp; emp.possuiMaisDeUmSindicato=!!document.getElementById("empMultiSindCad")?.checked; emp.sindicatosAdicionaisDetalhes=emp.possuiMaisDeUmSindicato?normalizarListaSindicatosAdic(empSindicatosAdicTemp,emp.sindicato):[]; emp.sindicatosAdicionais=emp.sindicatosAdicionaisDetalhes.map(x=>x.nome)
+  emp.codigo=cod; emp.nome=empNomeCad.value.trim(); emp.tipo=empTipoCad.value.trim(); const novoStatusEmpresa=(document.getElementById("empClienteStatusCad")?.value||"Ativo"); if(!await aplicarStatusEmpresaInativa(emp,novoStatusEmpresa))return; emp.sindicato=empSindCad.value.trim(); emp.vinculoSindicato=empVinculoSindCad.value; emp.dataBase=normalizarMesExtenso(empDbCad.value); emp.statusDataBase=empDbStatusCad.value; if(emp.statusDataBase==="Em dia")emp.dataBaseEmDiaAno=anoCompetencia(); else if(emp.statusDataBase==="Aguardando")delete emp.dataBaseEmDiaAno; emp.dissidio=empDissCad.value.trim(); emp.contribuicaoSindicatoStatus=(document.getElementById("empContribSindStatusCad")?.value||"OK"); emp.naoContribuiSindicatoObs=empresaNaoContribuiSindicatoObsTemp; emp.possuiMaisDeUmSindicato=!!document.getElementById("empMultiSindCad")?.checked; emp.sindicatosAdicionaisDetalhes=emp.possuiMaisDeUmSindicato?normalizarListaSindicatosAdic(empSindicatosAdicTemp,emp.sindicato):[]; emp.sindicatosAdicionais=emp.sindicatosAdicionaisDetalhes.map(x=>x.nome)
   state.empresas.sort((a,b)=>Number(a.codigo)-Number(b.codigo)||a.nome.localeCompare(b.nome))
   limparEmpresaForm()
   saved()
@@ -191,9 +191,9 @@ function mEmpAplicarSind(){
   const vinc=document.getElementById("meVinculo"); if(vinc)vinc.value=(s.beneficio==="Especial")?"Especial":"Normal"
   renderModalSindicatosAdic()
 }
-function mEmpAnotacao(){
+async function mEmpAnotacao(){
   const atual=empresaNaoContribuiSindicatoObsTemp||""
-  const txt=prompt("Anotação — empresa não vai contribuir com sindicato:\n\nEscreva a observação ou deixe em branco para apagar.",atual)
+  const txt=await perguntar("Anotação — empresa não vai contribuir com sindicato:\n\nEscreva a observação ou deixe em branco para apagar.",atual)
   if(txt===null)return
   empresaNaoContribuiSindicatoObsTemp=String(txt||"").trim()
   const btn=document.getElementById("meObsBtn"); if(btn)btn.textContent=empresaNaoContribuiSindicatoObsTemp?"Anotação ▲":"Anotação"
@@ -216,9 +216,9 @@ function mEmpVincular(){
   e.eventosPermitidos.sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0])||a.localeCompare(b))
   save(); mEmpRenderEventos(); renderEventosEmpresa(); renderEmpEvtVincFormCad()
 }
-function mEmpRemoverEvento(idx){
+async function mEmpRemoverEvento(idx){
   const e=state.empresas.find(emp=>String(emp.codigo)===String(empresaEditando)); if(!e)return
-  if(!confirm("Desvincular este evento da empresa?"))return
+  if(!await confirmar("Desvincular este evento da empresa?"))return
   e.eventosPermitidos.splice(idx,1)
   salvarAgora(); mEmpRenderEventos(); renderEventosEmpresa(); renderEmpEvtVincFormCad(); renderEmp()
 }
@@ -230,13 +230,13 @@ function mEmpSugerir(){
   save(); mEmpRenderEventos(); renderEventosEmpresa(); renderEmpEvtVincFormCad()
   aviso("Eventos sugeridos adicionados com base nos funcionários desta empresa.")
 }
-function mEmpSalvar(){
+async function mEmpSalvar(){
   const codNovo=(document.getElementById("meCod")?.value||"").trim()
   if(!codNovo)return aviso("Informe o código da empresa.")
   let emp=state.empresas.find(e=>String(e.codigo)===String(empresaEditando))
   const novo=!emp
   if(state.empresas.some(e=>e!==emp&&String(e.codigo)===String(codNovo)))return aviso("Já existe outra empresa com este código.")
-  if(!confirm((novo?"Cadastrar nova":"Salvar alterações da")+" empresa?"))return
+  if(!await confirmar((novo?"Cadastrar nova":"Salvar alterações da")+" empresa?"))return
   if(novo){
     emp={codigo:codNovo,nome:"",tipo:"",statusCliente:"Ativo",clienteInativo:false,sindicato:"",vinculoSindicato:"Normal",dataBase:"",statusDataBase:"Em dia",dissidio:"",dataBaseObs:"",naoContribuiSindicatoObs:"",contribuicaoSindicatoStatus:"OK",possuiMaisDeUmSindicato:false,sindicatosAdicionais:[],sindicatosAdicionaisDetalhes:[],funcionarios:[],eventosPermitidos:[]}
     state.empresas.push(emp)
@@ -245,7 +245,7 @@ function mEmpSalvar(){
   emp.nome=(document.getElementById("meNome")?.value||"").trim()
   emp.tipo=document.getElementById("meTipo")?.value||""
   const novoStatusEmpresa=document.getElementById("meCliente")?.value||"Ativo"
-  if(!aplicarStatusEmpresaInativa(emp,novoStatusEmpresa))return
+  if(!await aplicarStatusEmpresaInativa(emp,novoStatusEmpresa))return
   emp.sindicato=(document.getElementById("meSind")?.value||"").trim()
   emp.vinculoSindicato=document.getElementById("meVinculo")?.value||"Normal"
   emp.dataBase=normalizarMesExtenso(document.getElementById("meDb")?.value||"")
@@ -265,8 +265,8 @@ function mEmpSalvar(){
   fecharModalEmpresa()
   saved()
 }
-function cancelarEmpresaCadastro(){if((empCodCad.value||empNomeCad.value)&&!confirm("Cancelar edição/cadastro da empresa?"))return; limparEmpresaForm()}
-function salvarFuncionarioCadastro(){
+async function cancelarEmpresaCadastro(){if((empCodCad.value||empNomeCad.value)&&!await confirmar("Cancelar edição/cadastro da empresa?"))return; limparEmpresaForm()}
+async function salvarFuncionarioCadastro(){
   const empCod=funEmpCad.value, cod=funCodCad.value.trim()
   if(!empCod||!cod)return aviso("Informe empresa e código do funcionário.")
   const emp=state.empresas.find(e=>e.codigo===empCod); if(!emp)return
@@ -278,7 +278,7 @@ function salvarFuncionarioCadastro(){
     if(funEventoEditIndex!==null && funEventoTemp[funEventoEditIndex]){
       funEventoTemp[funEventoEditIndex]=obj
       funEventoEditIndex=null
-    }else if(confirm("Existe um evento padrão preenchido que ainda não foi adicionado. Deseja incluir antes de salvar?")){
+    }else if(await confirmar("Existe um evento padrão preenchido que ainda não foi adicionado. Deseja incluir antes de salvar?")){
       if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
       if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return aviso("Este evento padrão já existe em um período sobreposto. Use Alterar para editar o período anterior.")
       funEventoTemp.push(obj)
@@ -289,7 +289,7 @@ function salvarFuncionarioCadastro(){
     if(funAutoEditIndex!==null && funAutoTemp[funAutoEditIndex]){
       funAutoTemp[funAutoEditIndex]=obj
       funAutoEditIndex=null
-    }else if(confirm("Existe um evento automático preenchido que ainda não foi adicionado. Deseja incluir antes de salvar?")){
+    }else if(await confirmar("Existe um evento automático preenchido que ainda não foi adicionado. Deseja incluir antes de salvar?")){
       const idx=funAutoTemp.findIndex(a=>a.evento===obj.evento)
       if(idx>=0)funAutoTemp[idx]=obj
       else funAutoTemp.push(obj)
@@ -300,14 +300,14 @@ function salvarFuncionarioCadastro(){
 
   let f=emp.funcionarios.find(x=>x.codigo===cod)
   const novo=!f
-  if(!confirm((novo?"Cadastrar":"Salvar alterações deste")+" funcionário?"))return
+  if(!await confirmar((novo?"Cadastrar":"Salvar alterações deste")+" funcionário?"))return
   if(!f){f={codigo:cod,nome:"",funcao:"",salario:"",statusDetectado:"Ativo",observacoes:[],eventos:[],autoEventos:[]}; emp.funcionarios.push(f)}
-  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.admissao=(document.getElementById("funAdmCad")?.value||""); f.salario=funSalCad.value.trim(); if(!aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
+  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.admissao=(document.getElementById("funAdmCad")?.value||""); f.salario=funSalCad.value.trim(); if(!await aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
   f.observacoes=funObsCad.value.trim()?[funObsCad.value.trim()]:[]
   f.autoEventos=clone(funAutoTemp)
   f.eventos=clone(funEventoTemp)
   normalizarEventosCadastradosFuncionario(f)
-  limparEventosFuturosNaoConferidos(emp,f)
+  await limparEventosFuturosNaoConferidos(emp,f)
   emp.funcionarios.sort((a,b)=>Number(a.codigo)-Number(b.codigo)||a.nome.localeCompare(b.nome))
 
   const chave=emp.codigo+"|"+f.codigo
@@ -450,27 +450,27 @@ function mFunRenderPadrao(){
     </div>`
   }).join("")
 }
-function mFunExcluirPadrao(i){
+async function mFunExcluirPadrao(i){
   const a=funEventoTemp[i]; if(!a)return
   const jaTemFim=!!a.fim
   if(!jaTemFim){
     // Sem data fim: avisar que o correto é colocar data fim
-    const resp=confirm(`⚠️ O correto para encerrar um evento padrão é informar uma DATA FIM, não excluir.\n\nIsso preserva o histórico e evita que o evento suma de meses já lançados.\n\nSe quiser inativar, clique em "Alterar" e preencha o campo "Fim".\n\nMesmo assim deseja EXCLUIR permanentemente o evento "${a.desc}"?`)
+    const resp=await confirmar(`⚠️ O correto para encerrar um evento padrão é informar uma DATA FIM, não excluir.\n\nIsso preserva o histórico e evita que o evento suma de meses já lançados.\n\nSe quiser inativar, clique em "Alterar" e preencha o campo "Fim".\n\nMesmo assim deseja EXCLUIR permanentemente o evento "${a.desc}"?`)
     if(!resp)return
   }else{
-    if(!confirm(`Excluir o evento "${a.desc}"? Esta ação não pode ser desfeita.`))return
+    if(!await confirmar(`Excluir o evento "${a.desc}"? Esta ação não pode ser desfeita.`))return
   }
   funEventoTemp.splice(i,1)
   funEventoEditIndex=null
   mFunRenderPadrao()
 }
-function mFunAddAuto(){
+async function mFunAddAuto(){
   const ev=document.getElementById("mfAutoEvento")?.value
   const qtd=document.getElementById("mfAutoQtd")?.value
   if(!ev||!qtd)return aviso("Informe evento e quantidade.")
   const obj={evento:ev,qtd,inicio:document.getElementById("mfAutoInicio")?.value||"",fim:document.getElementById("mfAutoFim")?.value||""}
   if(funAutoEditIndex!==null){funAutoTemp[funAutoEditIndex]=obj;funAutoEditIndex=null}
-  else{const idx=funAutoTemp.findIndex(a=>a.evento===ev); if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funAutoTemp[idx]=obj}else{if(!confirm("Cadastrar este evento automático?"))return; funAutoTemp.push(obj)}}
+  else{const idx=funAutoTemp.findIndex(a=>a.evento===ev); if(idx>=0){if(!await confirmar("Evento já existe. Deseja alterar?"))return; funAutoTemp[idx]=obj}else{if(!await confirmar("Cadastrar este evento automático?"))return; funAutoTemp.push(obj)}}
   document.getElementById("mfAutoEvento").value=""
   document.getElementById("mfAutoQtd").value=""
   document.getElementById("mfAutoInicio").value=""
@@ -485,19 +485,19 @@ function mFunEditarAuto(i){
   const ini=document.getElementById("mfAutoInicio"); if(ini)ini.value=a.inicio||""
   const fim=document.getElementById("mfAutoFim"); if(fim)fim.value=a.fim||""
 }
-function mFunAddPadrao(){
+async function mFunAddPadrao(){
   const ev=document.getElementById("mfPadEvento")?.value
   if(!ev)return aviso("Selecione o evento padrão.")
   const obj={desc:ev,valor:valorPadrao(document.getElementById("mfPadValor")?.value||""),obs:document.getElementById("mfPadObs")?.value||"",inicio:document.getElementById("mfPadInicio")?.value||"",fim:document.getElementById("mfPadFim")?.value||"",status:"Pendente"}
   // FIX: verificar modo edição ANTES de checar duplicata
   if(funEventoEditIndex!==null){
-    if(!confirm("Salvar alteração deste evento padrão?"))return
+    if(!await confirmar("Salvar alteração deste evento padrão?"))return
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
     if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
     if(funEventoTemp.some(a=>a.desc===ev&&periodosEventosSobrepostos(a,obj)))return aviso("Este evento já existe em um período sobreposto. Use Alterar para editar o período anterior.")
-    if(!confirm("Cadastrar este evento padrão?"))return
+    if(!await confirmar("Cadastrar este evento padrão?"))return
     funEventoTemp.push(obj)
   }
   document.getElementById("mfPadEvento").value=""
@@ -530,7 +530,7 @@ function fecharMiniModalEvPad(){
   document.getElementById("modalEvPad").classList.remove("open")
   funEventoEditIndex=null
 }
-function salvarMiniModalEvPad(){
+async function salvarMiniModalEvPad(){
   if(funEventoEditIndex===null)return
   const a=funEventoTemp[funEventoEditIndex]
   if(!a)return
@@ -545,12 +545,12 @@ function salvarMiniModalEvPad(){
   if(novoInicio!==a.inicio)mudancas.push(`Início: "${fmtMesRefLocal(a.inicio)||"sem início"}" → "${fmtMesRefLocal(novoInicio)||"sem início"}"`)
   if(novoFim!==a.fim)mudancas.push(`Fim: "${fmtMesRefLocal(a.fim)||"sem fim"}" → "${fmtMesRefLocal(novoFim)||"sem fim"}"`)
   if(!mudancas.length){fecharMiniModalEvPad();return}
-  if(!confirm(`Salvar alterações no evento "${a.desc}"?\n\n${mudancas.join("\n")}`))return
+  if(!await confirmar(`Salvar alterações no evento "${a.desc}"?\n\n${mudancas.join("\n")}`))return
   funEventoTemp[funEventoEditIndex]={...a,valor:valorPadrao(novoValor),obs:novoObs,inicio:novoInicio,fim:novoFim}
   fecharMiniModalEvPad()
   mFunRenderPadrao()
 }
-function mFunSalvar(){
+async function mFunSalvar(){
   const empCod=document.getElementById("mfEmp")?.value
   const cod=(document.getElementById("mfCod")?.value||"").trim()
   if(!empCod||!cod)return aviso("Informe empresa e código do funcionário.")
@@ -564,7 +564,7 @@ function mFunSalvar(){
   funStatusCad.value=document.getElementById("mfStatus")?.value||"Ativo"
   funObsCad.value=document.getElementById("mfObs")?.value||""
   // FIX: fechar DEPOIS de salvar — fecharModalFuncionario limpa o form
-  if(salvarFuncionarioCadastro()===false)return
+  if((await salvarFuncionarioCadastro())===false)return
   document.getElementById("modalFuncionario")?.classList.remove("open")
   document.body.classList.remove("modal-aberto")
 }
@@ -625,12 +625,12 @@ function addEventoEmpresaFormCad(){
   renderEmpEvtVincFormCad()
   renderEventosEmpresa()
 }
-function delEventoEmpresaFormCad(idx){
+async function delEventoEmpresaFormCad(idx){
   const codEmp=empresaEditando
   if(!codEmp)return
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
   if(!emp||!Array.isArray(emp.eventosPermitidos))return
-  if(!confirm("Desvincular este evento da empresa?"))return
+  if(!await confirmar("Desvincular este evento da empresa?"))return
   emp.eventosPermitidos.splice(idx,1)
   salvarAgora()
   renderEmpEvtVincFormCad()
@@ -702,9 +702,9 @@ function renomearEventoPermitido(i,novaDesc){
   state.empresas.forEach(emp=>(emp.eventosPermitidos||[]).forEach(l=>{const p=parseEventoLabel(l); if(p&&p.codigo===ev.codigo)oldLabels.push(l)}))
   state.empresas.forEach(emp=>{emp.eventosPermitidos=(emp.eventosPermitidos||[]).map(l=>{const p=parseEventoLabel(l); return p&&p.codigo===ev.codigo?`${ev.codigo} - ${novaDesc}`:l})})
 }
-function excluirEventoGlobal(i){
+async function excluirEventoGlobal(i){
   const label=labelEventoObj(state.eventos[i])
-  if(!confirm("Excluir do cadastro geral? O evento será desvinculado das empresas, mas lançamentos antigos continuam no fechamento."))return
+  if(!await confirmar("Excluir do cadastro geral? O evento será desvinculado das empresas, mas lançamentos antigos continuam no fechamento."))return
   state.eventos.splice(i,1)
   state.empresas.forEach(emp=>emp.eventosPermitidos=(emp.eventosPermitidos||[]).filter(l=>l!==label))
   saved()

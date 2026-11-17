@@ -118,16 +118,16 @@ function guiaAddEmpresa(){
   guiaListaVisivel=true; guiaExpand.add(String(cod)); guiaEnsureDraft(cod);
   saved();
 }
-function guiaRemoveEmpresa(cod){
-  if(!confirm('Remover esta empresa do controle de guias? O histórico de lançamentos dela é mantido.'))return;
+async function guiaRemoveEmpresa(cod){
+  if(!await confirmar('Remover esta empresa do controle de guias? O histórico de lançamentos dela é mantido.'))return;
   const g=guiasState(); g.empresas=g.empresas.filter(x=>String(x.codigo)!==String(cod)); guiaExpand.delete(String(cod)); delete guiaDraft[String(cod)]; saved();
 }
-function guiaToggleExpand(cod){
+async function guiaToggleExpand(cod){
   cod=String(cod);
   if(guiaExpand.has(cod)){
     const e=guiasState().empresas.find(x=>String(x.codigo)===cod);
     if(guiaDraft[cod] && JSON.stringify(guiaDraft[cod])!==JSON.stringify((e&&e.guias)||[])){
-      if(!confirm('Há alterações não salvas nesta empresa. Descartar?'))return;
+      if(!await confirmar('Há alterações não salvas nesta empresa. Descartar?'))return;
     }
     delete guiaDraft[cod]; guiaExpand.delete(cod);
   } else { guiaEnsureDraft(cod); guiaExpand.add(cod); }
@@ -147,7 +147,7 @@ function guiaSalvarEmpresa(cod){
 function guiaCancelarEmpresa(cod){
   cod=String(cod); delete guiaDraft[cod]; guiaExpand.delete(cod); renderGuias();
 }
-function guiaToggleGuia(cod,tipo,checked){
+async function guiaToggleGuia(cod,tipo,checked){
   const arr=guiaEnsureDraft(cod);
   let entry=arr.find(x=>x.tipo===tipo);
   if(checked){
@@ -156,8 +156,8 @@ function guiaToggleGuia(cod,tipo,checked){
     renderGuias();
   } else {
     if(!entry){renderGuias();return;}
-    if(!confirm('Tem certeza que deseja desmarcar a guia "'+tipo+'" da empresa '+guiaNomeEmp(cod)+'?\n\nVocê vai informar a partir de qual competência ela deixa de aparecer. Os meses anteriores continuam no controle.')){renderGuias();return;}
-    const resp=prompt('A partir de qual competência a guia "'+tipo+'" NÃO deve mais aparecer?\n\nDigite no formato AAAA-MM (ex.: 2026-08). Ela continua aparecendo até a competência anterior.', guiasComp());
+    if(!await confirmar('Tem certeza que deseja desmarcar a guia "'+tipo+'" da empresa '+guiaNomeEmp(cod)+'?\n\nVocê vai informar a partir de qual competência ela deixa de aparecer. Os meses anteriores continuam no controle.')){renderGuias();return;}
+    const resp=await perguntar('A partir de qual competência a guia "'+tipo+'" NÃO deve mais aparecer?\n\nDigite no formato AAAA-MM (ex.: 2026-08). Ela continua aparecendo até a competência anterior.', guiasComp());
     if(resp===null){renderGuias();return;}
     const c=(resp||'').trim();
     if(!/^\d{4}-\d{2}$/.test(c)){aviso('Competência inválida. Use o formato AAAA-MM (ex.: 2026-08).');renderGuias();return;}
@@ -195,8 +195,8 @@ async function guiaAddTipo(){
   const f=document.getElementById('guiaTipoForma'); if(f)f.value='';
   guiaTipoAnexoTemp=null; renderGuiaTipoAnexoTemp(); saved();
 }
-function guiaRenomearTipo(old){
-  const novo=prompt('Novo nome para a guia "'+old+'":', old);
+async function guiaRenomearTipo(old){
+  const novo=await perguntar('Novo nome para a guia "'+old+'":', old);
   if(novo===null)return;
   const nome=novo.trim();
   if(!nome)return aviso('Informe um nome.');
@@ -212,8 +212,8 @@ function guiaRenomearTipo(old){
   g.lanc=nl;
   saved();
 }
-function guiaRemoveTipo(nome){
-  if(!confirm('Remover o tipo "'+nome+'"? Ele deixa de aparecer no controle. Lançamentos antigos são mantidos.'))return;
+async function guiaRemoveTipo(nome){
+  if(!await confirmar('Remover o tipo "'+nome+'"? Ele deixa de aparecer no controle. Lançamentos antigos são mantidos.'))return;
   const g=guiasState(); g.tipos=g.tipos.filter(t=>t.nome!==nome);
   g.empresas.forEach(e=>{e.guias=(e.guias||[]).filter(x=>x.tipo!==nome);});
   Object.keys(guiaDraft).forEach(cod=>{guiaDraft[cod]=(guiaDraft[cod]||[]).filter(x=>x.tipo!==nome);});

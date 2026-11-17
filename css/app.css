@@ -194,4 +194,6 @@ body.modal-aberto{overflow:hidden}
 .aviso-caixa{background:#fff;color:var(--ink);border-radius:14px;max-width:520px;width:100%;padding:22px 22px 16px;box-shadow:0 20px 60px rgba(0,0,0,.25);border-top:5px solid var(--pri)}
 .aviso-caixa.aviso-alerta{border-top-color:var(--red)}
 .aviso-texto{white-space:pre-wrap;font-size:14.5px;line-height:1.45;max-height:60vh;overflow:auto}
-.aviso-ok{display:block;margin:16px 0 0 auto;min-width:96px}
+.aviso-botoes{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.aviso-botoes .btn{min-width:96px}
+.aviso-campo{width:100%;margin-top:12px}

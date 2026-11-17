@@ -43,7 +43,7 @@ function salvarLaudoLinhaTeste(id){
   r.obs=document.getElementById(`${pref}_obs`)?.value||'';
   saved();
 }
-function excluirLaudoTeste(id){if(!confirm('Excluir este laudo?'))return; state.laudos=(state.laudos||[]).filter(x=>String(x.id)!==String(id)); saved()}
+async function excluirLaudoTeste(id){if(!await confirmar('Excluir este laudo?'))return; state.laudos=(state.laudos||[]).filter(x=>String(x.id)!==String(id)); saved()}
 function renderLaudos(){
   popularSelectsModulos();
   if(!Array.isArray(state.laudos))state.laudos=[];
@@ -152,7 +152,7 @@ function analiseFerias(f,r){
 }
 function statusFerias(f,r){return analiseFerias(f,r)}
 function salvarFeriasTeste(empCod,funCod){const r=feriasRec(empCod,funCod); r.ultimoInicio=document.getElementById(`ferUltIni_${empCod}_${funCod}`)?.value||''; r.ultimoFim=document.getElementById(`ferUltFim_${empCod}_${funCod}`)?.value||''; const obsEl=document.getElementById(`ferObs_${empCod}_${funCod}`); if(obsEl)r.obs=obsEl.value||''; saved()}
-function baixarFeriasTeste(empCod,funCod){const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod)); if(!f)return; const r=feriasRec(empCod,funCod); const a=analiseFerias(f,r); const p=a.periodoAtual; if(!p.ini||!p.fim)return aviso('Informe a data de admissão do funcionário primeiro.'); if(!confirm(`Baixar/controlar o período atual?
+async function baixarFeriasTeste(empCod,funCod){const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod)); if(!f)return; const r=feriasRec(empCod,funCod); const a=analiseFerias(f,r); const p=a.periodoAtual; if(!p.ini||!p.fim)return aviso('Informe a data de admissão do funcionário primeiro.'); if(!await confirmar(`Baixar/controlar o período atual?
 
 ${fmtDataBR(p.ini)} a ${fmtDataBR(p.fim)}
 
