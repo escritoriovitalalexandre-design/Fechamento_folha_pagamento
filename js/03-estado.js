@@ -32,7 +32,7 @@ async function loadFromSupabase(){
     leituraInicialOk = false;
     setConexao(false);
     console.error("Falha ao ler do Supabase; usando cópia local sem sobrescrever a nuvem:", e);
-    alert("⚠️ Não consegui LER seus dados do Supabase agora.\n\nO app abriu com a última cópia local, mas NÃO vou sobrescrever a nuvem.\n\nNão faça alterações até a bolinha ficar VERDE (Supabase conectado), para não perder trabalho.");
+    aviso("⚠️ Não consegui LER seus dados do Supabase agora.\n\nO app abriu com a última cópia local, mas NÃO vou sobrescrever a nuvem.\n\nNão faça alterações até a bolinha ficar VERDE (Supabase conectado), para não perder trabalho.");
     return loadLocal();
   }
 }

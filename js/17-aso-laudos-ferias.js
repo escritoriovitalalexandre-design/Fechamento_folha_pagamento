@@ -22,7 +22,7 @@ function salvarLaudoTeste(){
   if(!Array.isArray(state.laudos))state.laudos=[];
   const empCod=laudoEmpNovo.value;
   const tipo=laudoTipoNovo.value;
-  if(!empCod||!tipo)return alert('Informe empresa e tipo de laudo.');
+  if(!empCod||!tipo)return aviso('Informe empresa e tipo de laudo.');
   let r=state.laudos.find(x=>String(x.empCod)===String(empCod)&&String(x.tipo)===String(tipo));
   if(!r){r={id:Date.now()+Math.random(),empCod,tipo,grauRisco:'',ultimo:'',prazo:12,obs:''}; state.laudos.push(r)}
   r.grauRisco=laudoRiscoNovo?.value||'';
@@ -152,7 +152,7 @@ function analiseFerias(f,r){
 }
 function statusFerias(f,r){return analiseFerias(f,r)}
 function salvarFeriasTeste(empCod,funCod){const r=feriasRec(empCod,funCod); r.ultimoInicio=document.getElementById(`ferUltIni_${empCod}_${funCod}`)?.value||''; r.ultimoFim=document.getElementById(`ferUltFim_${empCod}_${funCod}`)?.value||''; const obsEl=document.getElementById(`ferObs_${empCod}_${funCod}`); if(obsEl)r.obs=obsEl.value||''; saved()}
-function baixarFeriasTeste(empCod,funCod){const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod)); if(!f)return; const r=feriasRec(empCod,funCod); const a=analiseFerias(f,r); const p=a.periodoAtual; if(!p.ini||!p.fim)return alert('Informe a data de admissão do funcionário primeiro.'); if(!confirm(`Baixar/controlar o período atual?
+function baixarFeriasTeste(empCod,funCod){const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); const f=emp?.funcionarios?.find(x=>String(x.codigo)===String(funCod)); if(!f)return; const r=feriasRec(empCod,funCod); const a=analiseFerias(f,r); const p=a.periodoAtual; if(!p.ini||!p.fim)return aviso('Informe a data de admissão do funcionário primeiro.'); if(!confirm(`Baixar/controlar o período atual?
 
 ${fmtDataBR(p.ini)} a ${fmtDataBR(p.fim)}
 
@@ -189,7 +189,7 @@ function abrirPDFModuloTeste(titulo,subtitulo,filtros,headers,rows){
     @page{size:A4 landscape;margin:10mm}body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:11px}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1B3A6B;padding-bottom:8px;margin-bottom:10px}h1{font-size:20px;color:#1B3A6B;margin:0 0 4px}.muted{color:#667085}.filtros{background:#f8fafc;border:1px solid #d8e0ea;border-radius:8px;padding:8px;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#eef4ff;color:#1B3A6B;text-align:left;font-size:10px;text-transform:uppercase}th,td{border:1px solid #d8e0ea;padding:6px;vertical-align:top}tr:nth-child(even)td{background:#fbfdff}.rodape{margin-top:8px;font-size:10px;color:#667085}.btn{position:fixed;right:12px;top:12px;border:0;background:#1B3A6B;color:white;border-radius:8px;padding:8px 12px;font-weight:700}@media print{.btn{display:none}}
   </style></head><body><button class="btn" onclick="window.print()">Imprimir / PDF</button><div class="top"><div><h1>${esc(titulo)}</h1><div class="muted">${esc(subtitulo||'')}</div></div><div class="muted">Gerado em ${esc(dataHora)}</div></div><div class="filtros"><b>Filtros:</b> ${esc(filtros||'Todos')}</div><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${linhas}</tbody></table><div class="rodape">Relatório gerado pelo sistema. Não altera dados do fechamento mensal.</div><script>setTimeout(()=>window.print(),400)<\/script></body></html>`;
   const w=window.open('','_blank');
-  if(!w)return alert('O navegador bloqueou a janela do PDF. Libere pop-ups e tente novamente.');
+  if(!w)return aviso('O navegador bloqueou a janela do PDF. Libere pop-ups e tente novamente.');
   w.document.write(html); w.document.close();
 }
 function gerarPDFASOTeste(){

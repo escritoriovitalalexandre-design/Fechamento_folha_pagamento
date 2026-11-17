@@ -29,7 +29,7 @@ async function carregarVersoes(){
 }
 async function baixarVersao(id){
   const {data, error} = await sbClient.from("dados_app_historico").select("dados, versao_de").eq("id", id).single();
-  if(error || !data){ alert("Não consegui baixar esta versão: " + (error?.message || "não encontrada")); return; }
+  if(error || !data){ aviso("Não consegui baixar esta versão: " + (error?.message || "não encontrada")); return; }
   const d = new Date(data.versao_de || Date.now());
   const nome = "versao-folha-" + d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")
     + "_" + String(d.getHours()).padStart(2,"0") + "h" + String(d.getMinutes()).padStart(2,"0") + ".json";
@@ -178,7 +178,7 @@ document.addEventListener("click", async (ev)=>{
   const {data, error} = await sbClient.storage.from(SB_BUCKET).createSignedUrl(caminho, 300, baixar ? {download: baixar} : undefined);
   if(error || !data?.signedUrl){
     if(janela) janela.close();
-    alert("Não consegui abrir o anexo: " + (error?.message || "link indisponível") + ".\n\nVerifique se você está logado.");
+    aviso("Não consegui abrir o anexo: " + (error?.message || "link indisponível") + ".\n\nVerifique se você está logado.");
     return;
   }
   if(janela) janela.location.href = data.signedUrl; else location.href = data.signedUrl;
@@ -197,7 +197,7 @@ function avisarFalhaSalvamento(motivo){
   // Pop-up de aviso. Aparece só uma vez por episódio de falha (não repete a cada tentativa).
   if(avisoFalhaSupabase)return;
   avisoFalhaSupabase=true;
-  alert("⚠️ ATENÇÃO — sua última alteração NÃO foi salva no Supabase.\n\nMotivo: "+motivo+"\n\nExiste uma cópia local de segurança neste navegador, mas não confie só nela. Assim que a conexão/permissão voltar, faça uma alteração e espere aparecer o \"Salvo ✓\" verde e a bolinha verde \"Supabase conectado\".");
+  aviso("⚠️ ATENÇÃO — sua última alteração NÃO foi salva no Supabase.\n\nMotivo: "+motivo+"\n\nExiste uma cópia local de segurança neste navegador, mas não confie só nela. Assim que a conexão/permissão voltar, faça uma alteração e espere aparecer o \"Salvo ✓\" verde e a bolinha verde \"Supabase conectado\".");
 }
 async function sbSet(chave, dados){
   if(!sbClient){
@@ -266,7 +266,7 @@ async function uploadAnexoStorage(file, tipo){
     return {id: Date.now()+Math.random(), tipo: tipo||"Documento", nome: file.name, tamanho: file.size, url: pub?.publicUrl||"", path: nomeSeguro, criadoEm: new Date().toISOString()};
   }catch(e){
     console.error("Falha ao enviar anexo para o Storage:", e);
-    alert("⚠️ Não consegui enviar o arquivo \""+file.name+"\" para o Supabase Storage.\n\nMotivo: "+(e?.message||e)+"\n\nVerifique se o bucket \""+SB_BUCKET+"\" existe e se há política de acesso (policy) para o anon. O anexo NÃO foi salvo.");
+    aviso("⚠️ Não consegui enviar o arquivo \""+file.name+"\" para o Supabase Storage.\n\nMotivo: "+(e?.message||e)+"\n\nVerifique se o bucket \""+SB_BUCKET+"\" existe e se há política de acesso (policy) para o anon. O anexo NÃO foi salvo.");
     return null;
   }
 }
@@ -296,7 +296,7 @@ async function migrarAnexoObjeto(a){
   }
 }
 async function migrarAnexosAntigos(){
-  if(!sbClient){ alert("Conecte ao Supabase primeiro (verifique a bolinha de conexão)."); return; }
+  if(!sbClient){ aviso("Conecte ao Supabase primeiro (verifique a bolinha de conexão)."); return; }
   if(!confirm("Isso vai reenviar para o Supabase Storage os documentos anexados ANTES da atualização (v3.2). Nada é apagado; se algum arquivo falhar, ele continua como está. Pode demorar alguns minutos dependendo da quantidade de anexos. Continuar?")) return;
   const info = document.getElementById("migracaoAnexosInfo");
   if(info) info.textContent = "Migrando, aguarde...";
@@ -338,13 +338,13 @@ async function migrarAnexosAntigos(){
   }
   if(total===0){
     if(info) info.textContent = "Nenhum anexo antigo encontrado — já está tudo migrado.";
-    alert("Não encontrei anexos antigos (em base64) para migrar. Já está tudo certo.");
+    aviso("Não encontrei anexos antigos (em base64) para migrar. Já está tudo certo.");
     return;
   }
   saved();
   const msg = "Migração concluída: "+ok+" de "+total+" anexo(s) movidos para o Storage.";
   if(info) info.textContent = msg + (ok<total?" Os que falharam continuam funcionando normalmente; você pode rodar de novo depois.":"");
-  alert(msg+(ok<total?"\n\nOs que falharam (falha de conexão) continuam funcionando como estavam — pode rodar a migração de novo depois.":"\n\nO estado ficou mais leve; o salvamento deve voltar ao normal."));
+  aviso(msg+(ok<total?"\n\nOs que falharam (falha de conexão) continuam funcionando como estavam — pode rodar a migração de novo depois.":"\n\nO estado ficou mais leve; o salvamento deve voltar ao normal."));
 }
 
 

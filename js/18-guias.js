@@ -7,12 +7,12 @@ async function guardarSenhaPortal(senha){
   // Devolve o id do segredo, null se a senha estiver vazia, ou undefined se falhar.
   if(!senha) return null;
   const {data,error}=await sbClient.rpc('salvar_senha_portal',{p_senha:senha});
-  if(error||!data){ alert('Não consegui guardar a senha no cofre do Supabase: '+(error?.message||'sem resposta')+'.\n\nNada foi alterado.'); return undefined; }
+  if(error||!data){ aviso('Não consegui guardar a senha no cofre do Supabase: '+(error?.message||'sem resposta')+'.\n\nNada foi alterado.'); return undefined; }
   return data;
 }
 async function lerSenhaPortal(ref){
   const {data,error}=await sbClient.rpc('ler_senha_portal',{p_ref:ref});
-  if(error){ alert('Não consegui ler a senha: '+error.message); return null; }
+  if(error){ aviso('Não consegui ler a senha: '+error.message); return null; }
   return data||'';
 }
 function htmlSenhaPortal(t){
@@ -111,9 +111,9 @@ function guiaSetStatus(c,empCod,tipo,val){const r=guiaRec(c,empCod,tipo); r.stat
 function guiaSetData(c,empCod,tipo,campo,val){const r=guiaRec(c,empCod,tipo); r[campo]=val; save();}
 function guiaAddEmpresa(){
   const sel=document.getElementById('guiaEmpAdd'); const cod=sel&&sel.value;
-  if(!cod)return alert('Selecione uma empresa.');
+  if(!cod)return aviso('Selecione uma empresa.');
   const g=guiasState();
-  if(g.empresas.some(x=>String(x.codigo)===String(cod)))return alert('Empresa já incluída no controle de guias.');
+  if(g.empresas.some(x=>String(x.codigo)===String(cod)))return aviso('Empresa já incluída no controle de guias.');
   g.empresas.push({codigo:cod,guias:[]});
   guiaListaVisivel=true; guiaExpand.add(String(cod)); guiaEnsureDraft(cod);
   saved();
@@ -160,7 +160,7 @@ function guiaToggleGuia(cod,tipo,checked){
     const resp=prompt('A partir de qual competência a guia "'+tipo+'" NÃO deve mais aparecer?\n\nDigite no formato AAAA-MM (ex.: 2026-08). Ela continua aparecendo até a competência anterior.', guiasComp());
     if(resp===null){renderGuias();return;}
     const c=(resp||'').trim();
-    if(!/^\d{4}-\d{2}$/.test(c)){alert('Competência inválida. Use o formato AAAA-MM (ex.: 2026-08).');renderGuias();return;}
+    if(!/^\d{4}-\d{2}$/.test(c)){aviso('Competência inválida. Use o formato AAAA-MM (ex.: 2026-08).');renderGuias();return;}
     entry.fim=compAddMes(c,-1); renderGuias();
   }
 }
@@ -176,7 +176,7 @@ function guiaToggleMes(cod,tipo,mesNum,checked){
 }
 async function guiaAddTipoAnexo(files){
   const file=Array.from(files||[])[0]; if(!file)return;
-  if(file.size>10*1024*1024){alert('O arquivo '+file.name+' tem mais de 10 MB.');return;}
+  if(file.size>10*1024*1024){aviso('O arquivo '+file.name+' tem mais de 10 MB.');return;}
   const tipo='Formulário da guia';
   guiaTipoAnexoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderGuiaTipoAnexoTemp();
   const anexo=await uploadAnexoStorage(file,tipo);
@@ -185,9 +185,9 @@ async function guiaAddTipoAnexo(files){
 function renderGuiaTipoAnexoTemp(){const box=document.getElementById('guiaTipoAnexoLista'); if(!box)return; box.innerHTML=guiaTipoAnexoTemp?anexoLinhaSindHtml(guiaTipoAnexoTemp,'guiaTipoAnexoTemp=null;renderGuiaTipoAnexoTemp()'):'Nenhum documento anexado.';}
 async function guiaAddTipo(){
   const nome=(document.getElementById('guiaTipoNovo').value||'').trim();
-  if(!nome)return alert('Informe o nome do tipo de guia.');
+  if(!nome)return aviso('Informe o nome do tipo de guia.');
   const g=guiasState();
-  if(g.tipos.some(t=>t.nome.toLowerCase()===nome.toLowerCase()))return alert('Esse tipo de guia já existe.');
+  if(g.tipos.some(t=>t.nome.toLowerCase()===nome.toLowerCase()))return aviso('Esse tipo de guia já existe.');
   const senhaRef=await guardarSenhaPortal(document.getElementById('guiaTipoSenha').value||'');
   if(senhaRef===undefined)return;
   g.tipos.push({nome,forma:document.getElementById('guiaTipoForma').value||'',url:(document.getElementById('guiaTipoUrl').value||'').trim(),usuario:(document.getElementById('guiaTipoUsuario').value||'').trim(),senhaRef,infos:(document.getElementById('guiaTipoInfos').value||'').trim(),vencimento:(document.getElementById('guiaTipoVenc').value||'').trim(),anexo:guiaTipoAnexoTemp||null});
@@ -199,10 +199,10 @@ function guiaRenomearTipo(old){
   const novo=prompt('Novo nome para a guia "'+old+'":', old);
   if(novo===null)return;
   const nome=novo.trim();
-  if(!nome)return alert('Informe um nome.');
+  if(!nome)return aviso('Informe um nome.');
   if(nome===old)return;
   const g=guiasState();
-  if(g.tipos.some(t=>t.nome.toLowerCase()===nome.toLowerCase()))return alert('Já existe uma guia com esse nome.');
+  if(g.tipos.some(t=>t.nome.toLowerCase()===nome.toLowerCase()))return aviso('Já existe uma guia com esse nome.');
   const t=g.tipos.find(x=>x.nome===old); if(!t)return;
   t.nome=nome;
   g.empresas.forEach(e=>{(e.guias||[]).forEach(x=>{if(x.tipo===old)x.tipo=nome;});});
@@ -297,7 +297,7 @@ function guiaTipoCancelarEdicao(){
 function renderGtAnexo(){const box=document.getElementById('gtAnexoLista'); if(!box)return; box.innerHTML=guiaTipoEditAnexoTemp?anexoLinhaSindHtml(guiaTipoEditAnexoTemp,'guiaTipoEditAnexoTemp=null;renderGtAnexo()'):'Nenhum documento anexado.';}
 async function guiaTipoEditAnexo(files){
   const file=Array.from(files||[])[0]; if(!file)return;
-  if(file.size>10*1024*1024){alert('O arquivo '+file.name+' tem mais de 10 MB.');return;}
+  if(file.size>10*1024*1024){aviso('O arquivo '+file.name+' tem mais de 10 MB.');return;}
   const tipo='Formulário da guia';
   guiaTipoEditAnexoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderGtAnexo();
   const anexo=await uploadAnexoStorage(file,tipo);
@@ -307,7 +307,7 @@ async function guiaTipoSalvarEdicao(){
   const nome=document.getElementById('guiaTipoEditNome').value;
   const empCod=document.getElementById('guiaTipoEditEmp').value;
   const t=guiaTipoObj(nome); if(!t)return;
-  if(gtSenhaOriginal.carregando){ alert('Aguarde: a senha ainda está sendo carregada do cofre.'); return; }
+  if(gtSenhaOriginal.carregando){ aviso('Aguarde: a senha ainda está sendo carregada do cofre.'); return; }
   const senhaDigitada=document.getElementById('gtSenha').value||'';
   let senhaRef;
   if(!senhaDigitada) senhaRef = gtSenhaOriginal.valor===null ? gtSenhaOriginal.ref : null;

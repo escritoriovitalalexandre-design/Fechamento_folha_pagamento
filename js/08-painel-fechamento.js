@@ -119,10 +119,10 @@ function renderAlertas(){
 function renderPainelDetalhes(){}
 function salvarEventoLinha(e,f,i,row){
   const item=find(e,f)
-  if(!item)return alert("Não localizei este funcionário no fechamento.")
+  if(!item)return aviso("Não localizei este funcionário no fechamento.")
   if(!item.x.eventos)item.x.eventos=[]
   const idx=Number(i)
-  if(idx<0 || idx>=item.x.eventos.length)return alert("Não localizei este evento para salvar.")
+  if(idx<0 || idx>=item.x.eventos.length)return aviso("Não localizei este evento para salvar.")
   if(!confirm("Salvar alterações deste evento?"))return
   const campos=row.querySelectorAll("select,input")
   const evAtual=item.x.eventos[idx]
@@ -143,7 +143,7 @@ function salvarEventoLinha(e,f,i,row){
     item.x.eventos.splice(idx,1)
     save(); renderFechamento(); renderRel()
     if(novoInicio && comp()<novoInicio){
-      alert("Evento com prazo salvo.\n\nEle começa a aparecer a partir de "+fmtMesAnoCurtoFechamento(novoInicio)+", por isso ainda não aparece neste mês.")
+      aviso("Evento com prazo salvo.\n\nEle começa a aparecer a partir de "+fmtMesAnoCurtoFechamento(novoInicio)+", por isso ainda não aparece neste mês.")
     }
     return
   }
@@ -249,7 +249,7 @@ function renderFechamento(){
 function updStatus(e,f,v){find(e,f).x.status=v; saved()}
 function updStatusEvento(e,f,i,v,el){
   const item=find(e,f)
-  if(!item || !item.x || !Array.isArray(item.x.eventos) || !item.x.eventos[i])return alert("Não localizei este evento no fechamento.")
+  if(!item || !item.x || !Array.isArray(item.x.eventos) || !item.x.eventos[i])return aviso("Não localizei este evento no fechamento.")
   item.x.eventos[i].status=v
   if(el){
     el.className="status-select "+statusClass(v)
@@ -271,9 +271,9 @@ function updObs(e,f,v){find(e,f).x.obs=v; save(); renderRel()}
 function updEvento(e,f,i,p,v){if(p==="valor")v=valorPadrao(v); const item=find(e,f); if(!item||!item.x.eventos[i])return; item.x.eventos[i][p]=v; save(); renderFechamento(); renderRel()}
 function addEventoFunc(e,f){
   const item=find(e,f)
-  if(!item)return alert("Não localizei este funcionário no fechamento.")
+  if(!item)return aviso("Não localizei este funcionário no fechamento.")
   const permitidos=eventosEmpresa(e)
-  if(!permitidos.length)return alert("Nenhum evento vinculado a esta empresa. Cadastre/vincule os códigos na aba Empresas/Códigos.")
+  if(!permitidos.length)return aviso("Nenhum evento vinculado a esta empresa. Cadastre/vincule os códigos na aba Empresas/Códigos.")
   if(!Array.isArray(item.x.eventos))item.x.eventos=[]
   item.x.eventos.push({desc:"",valor:"",obs:"",inicio:"",fim:"",status:"Pendente",origem:"manual"})
   normalizarOrdemEventosFechamento(item.x)
@@ -318,10 +318,10 @@ function excluirEventoProximasCompetencias(empCod,funCod,ev){
 }
 function delEvento(e,f,i){
   const item=find(e,f)
-  if(!item)return alert("Não localizei este funcionário no fechamento.")
+  if(!item)return aviso("Não localizei este funcionário no fechamento.")
   if(!Array.isArray(item.x.eventos))item.x.eventos=[]
   const idx=Number(i)
-  if(idx<0 || idx>=item.x.eventos.length)return alert("Não localizei este evento para excluir.")
+  if(idx<0 || idx>=item.x.eventos.length)return aviso("Não localizei este evento para excluir.")
   const ev=clone(item.x.eventos[idx])
   const origem=ev.origem || (ev.auto===true ? "automatico" : "manual")
   if(origem==="manual-recorrente"){
@@ -337,7 +337,7 @@ function delEvento(e,f,i){
     return
   }
   if(origem!=="manual"){
-    return alert("Este evento é automático ou padrão do funcionário. Para excluir, acesse o cadastro do funcionário e remova o evento por lá.")
+    return aviso("Este evento é automático ou padrão do funcionário. Para excluir, acesse o cadastro do funcionário e remova o evento por lá.")
   }
   if(!confirm(`Excluir este evento manual da competência atual?
 
@@ -386,6 +386,6 @@ function editarObsDataBase(codEmp){
 function lerObsDataBase(codEmp){
   const emp=state.empresas.find(e=>e.codigo===codEmp)
   if(!emp)return
-  alert(emp.dataBaseObs||"Sem observação cadastrada para a data-base.")
+  aviso(emp.dataBaseObs||"Sem observação cadastrada para a data-base.")
 }
 

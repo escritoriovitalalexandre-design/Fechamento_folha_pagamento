@@ -17,7 +17,7 @@ function renderEmp(){
     const botoes=excluidaAgora
       ? `<button class="btn small green" onclick="restaurarEmpresaCadastro('${codSafe}')">Restaurar</button><button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${codSafe}')">Editar</button>`
       : `<button class="btn small out" onclick="carregarEmpresaCadastroPorCodigo('${codSafe}')">Editar</button><button class="btn small red" onclick="excluirEmpresaCadastro('${codSafe}')">Excluir</button>`
-    return `<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${statusClass}">${esc(statusCliente)}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="alert('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><div class="action-line">${botoes}</div></td></tr>`
+    return `<tr><td><b>${esc(e.codigo)}</b></td><td>${esc(e.nome)}</td><td><span class="badge ${statusClass}">${esc(statusCliente)}</span></td><td>${esc(e.tipo||"")}</td><td>${esc(sindicatoPrincipalEAdicionais(e).join(" / ")||"")}</td><td><span class="${(e.vinculoSindicato||"Normal")==="Especial"?"badge-red-strong":""}">${esc(e.vinculoSindicato||"Normal")}</span></td><td>${esc(e.dataBase||"")}</td><td><span class="${dbClass(statusDB(e))}" style="padding:4px 10px;border-radius:12px">${esc(statusDB(e))}</span></td><td>${(e.contribuicaoSindicatoStatus||"OK")==="NAO"?'<span class="obs-sind-status nao">Não quer contribuir</span>':'<span class="obs-sind-status ok">OK</span>'} ${e.naoContribuiSindicatoObs?`<button class="tri-obs" title="${esc(e.naoContribuiSindicatoObs)}" onclick="aviso('${esc(e.naoContribuiSindicatoObs).replaceAll("'","&#39;")}')">▲</button> `:""}${esc(e.dissidio||"")}</td><td>${(e.eventosPermitidos||[]).length}</td><td><div class="action-line">${botoes}</div></td></tr>`
   }).join("")+"</tbody>"
 }
 function removerEmpresaDosFechamentos(empCod,competenciaInicio){
@@ -30,7 +30,7 @@ function removerEmpresaDosFechamentos(empCod,competenciaInicio){
 }
 function excluirEmpresaCadastro(codEmp){
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
-  if(!emp)return alert("Empresa não localizada.")
+  if(!emp)return aviso("Empresa não localizada.")
   const sugerida=comp()||SEED.competenciaBase
   const qtdFunc=(emp.funcionarios||[]).length
   let inicio=prompt(`Excluir/ocultar a empresa ${emp.codigo} - ${emp.nome} a partir de qual competência?
@@ -43,7 +43,7 @@ Competências anteriores serão preservadas.
 Funcionários cadastrados nesta empresa: ${qtdFunc}.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
-  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
   if(!confirm(`Confirmar exclusão/ocultação da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?
 
 O sistema vai remover dos fechamentos de ${inicio} em diante.
@@ -57,8 +57,8 @@ Competências anteriores não serão alteradas.`))return
 
 function restaurarEmpresaCadastro(codEmp){
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
-  if(!emp)return alert("Empresa não localizada.")
-  if(!String(emp.excluidoApartir||"").trim())return alert("Esta empresa não está marcada como excluída.")
+  if(!emp)return aviso("Empresa não localizada.")
+  if(!String(emp.excluidoApartir||"").trim())return aviso("Esta empresa não está marcada como excluída.")
   const sugerida=comp()||SEED.competenciaBase
   let inicio=prompt(`A partir de qual competência deseja RESTAURAR a empresa ${emp.codigo} - ${emp.nome}?
 
@@ -69,7 +69,7 @@ Ela voltará a aparecer da competência informada em diante.
 As competências anteriores continuarão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
-  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
   if(!confirm(`Confirmar restauração da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?`))return
   emp.restauradoApartir=inicio
   saved()
@@ -112,9 +112,9 @@ function renderFun(){
 }
 function excluirFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
-  if(!emp)return alert("Empresa não localizada.")
+  if(!emp)return aviso("Empresa não localizada.")
   const f=(emp.funcionarios||[]).find(f=>String(f.codigo)===String(funCod))
-  if(!f)return alert("Funcionário não localizado.")
+  if(!f)return aviso("Funcionário não localizado.")
   const sugerida=comp()||SEED.competenciaBase
   let inicio=prompt(`A partir de qual competência deseja excluir o funcionário ${f.codigo} - ${f.nome}?
 
@@ -124,7 +124,7 @@ Exemplo: ${sugerida}
 As competências anteriores a esse mês serão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
-  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
   if(!confirm(`Confirmar exclusão do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?
 
 O sistema vai remover dos fechamentos de ${inicio} em diante.
@@ -138,10 +138,10 @@ Competências anteriores não serão alteradas.`))return
 
 function restaurarFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
-  if(!emp)return alert("Empresa não localizada.")
+  if(!emp)return aviso("Empresa não localizada.")
   const f=(emp.funcionarios||[]).find(f=>String(f.codigo)===String(funCod))
-  if(!f)return alert("Funcionário não localizado.")
-  if(!String(f.excluidoApartir||"").trim())return alert("Este funcionário não está marcado como excluído.")
+  if(!f)return aviso("Funcionário não localizado.")
+  if(!String(f.excluidoApartir||"").trim())return aviso("Este funcionário não está marcado como excluído.")
   const sugerida=comp()||SEED.competenciaBase
   let inicio=prompt(`A partir de qual competência deseja RESTAURAR o funcionário ${f.codigo} - ${f.nome}?
 
@@ -152,7 +152,7 @@ Ele voltará a aparecer da competência informada em diante.
 As competências anteriores continuarão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
-  if(!/^\d{4}-\d{2}$/.test(inicio))return alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
+  if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
   if(!confirm(`Confirmar restauração do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?`))return
   f.restauradoApartir=inicio
   saved()
