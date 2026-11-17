@@ -56,7 +56,18 @@ async function tratarConflitoGravacao(){
 const SB_CHAVE_LOCK = "folha_lock";
 const LOCK_JANELA_MS = 60000;   // considera "em uso" se o sinal for dos últimos 60s
 const LOCK_PING_MS = 30000;     // atualiza o sinal de vida a cada 30s
-const MINHA_SESSAO = "s" + Date.now() + "-" + Math.floor(Math.random()*1e6);
+// Identificação desta ABA. Fica no sessionStorage, então sobrevive ao F5 na mesma
+// aba (antes, cada recarga gerava um id novo e a própria aba aparecia como
+// "outro navegador" por até 60s). Outra aba ou outro navegador tem id diferente.
+const MINHA_SESSAO = (()=>{
+  const novo = "s" + Date.now() + "-" + Math.floor(Math.random()*1e6);
+  try{
+    const salvo = sessionStorage.getItem("folha_sessao_aba");
+    if(salvo) return salvo;
+    sessionStorage.setItem("folha_sessao_aba", novo);
+  }catch(e){}
+  return novo;
+})();
 let modoSomenteLeitura = false;
 let _lockTimer = null;
 let avisoFalhaSupabase = false; // evita repetir o pop-up a cada tentativa de salvar
