@@ -5,7 +5,7 @@ function renderAutoTemp(){
   if(bx)bx.innerHTML=funEventoTemp.length?funEventoTemp.map((a,i)=>`<div class="action-line"><b>${esc(a.desc)}</b><span>${esc(a.valor||"")}</span><span>${a.inicio? "Início: "+esc(fmtMesRefLocal(a.inicio)):""}</span><span>${a.fim? "Fim: "+esc(fmtMesRefLocal(a.fim)):""}</span><span>${esc(a.obs||"")}</span><button class="btn small out" onclick="editarEventoPadraoTemp(${i})">Alterar</button><button class="btn small red" onclick="if(confirm('Excluir este evento padrão do funcionário?')){funEventoTemp.splice(${i},1);funEventoEditIndex=null;renderAutoTemp()}">Excluir</button></div>`).join(""):"Nenhum evento padrão vinculado."
 }
 function addAutoEventoTemp(){
-  if(!funAutoEvento.value||!funAutoQtd.value)return alert("Informe evento e quantidade.")
+  if(!funAutoEvento.value||!funAutoQtd.value)return aviso("Informe evento e quantidade.")
   const obj={evento:funAutoEvento.value,qtd:funAutoQtd.value,inicio:(document.getElementById("funAutoInicio")?.value||""),fim:(document.getElementById("funAutoFim")?.value||"")}
   if(funAutoEditIndex!==null){
     if(!confirm("Salvar alteração deste evento automático do funcionário?"))return
@@ -32,15 +32,15 @@ function periodosEventosSobrepostos(a,b){
   return (!a.fim||!b.inicio||a.fim>=b.inicio)&&(!b.fim||!a.inicio||b.fim>=a.inicio)
 }
 function addEventoPadraoTemp(){
-  if(!funEventoPadrao.value)return alert("Selecione o evento padrão.")
+  if(!funEventoPadrao.value)return aviso("Selecione o evento padrão.")
   const obj={desc:funEventoPadrao.value,valor:valorPadrao(funEventoValor.value||""),obs:funEventoObs.value||"",inicio:funEventoInicio.value||"",fim:funEventoFim.value||"",status:"Pendente"}
   if(funEventoEditIndex!==null){
     if(!confirm("Salvar alteração deste evento padrão do funcionário?"))return
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
-    if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return alert("O início não pode ser posterior ao fim.")
-    if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return alert("Já existe este evento padrão em um período sobreposto. Use Alterar para editar o período anterior.")
+    if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
+    if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return aviso("Já existe este evento padrão em um período sobreposto. Use Alterar para editar o período anterior.")
     if(!confirm("Cadastrar este evento padrão no funcionário?"))return
     funEventoTemp.push(obj)
   }
@@ -88,7 +88,7 @@ function limparEmpresaForm(){
 }
 function salvarEmpresaCadastro(){
   const cod=empCodCad.value.trim()
-  if(!cod)return alert("Informe o código da empresa.")
+  if(!cod)return aviso("Informe o código da empresa.")
 
   // Ao editar, localizar a empresa pelo código original salvo em empresaEditando,
   // e não pelo índice. Isso evita abrir/salvar a empresa errada quando outra empresa foi excluída/ocultada.
@@ -101,7 +101,7 @@ function salvarEmpresaCadastro(){
   }
 
   const jaExisteOutro=state.empresas.some(e=>e!==emp && String(e.codigo)===String(cod))
-  if(jaExisteOutro)return alert("Já existe outra empresa cadastrada com este código.")
+  if(jaExisteOutro)return aviso("Já existe outra empresa cadastrada com este código.")
 
   if(!confirm((emp?"Salvar alterações da":"Cadastrar nova")+" empresa?"))return
   if(!emp){emp={codigo:cod,nome:"",tipo:"",statusCliente:"Ativo",clienteInativo:false,sindicato:"",vinculoSindicato:"Normal",dataBase:"",statusDataBase:"Em dia",dissidio:"",dataBaseObs:"",naoContribuiSindicatoObs:"",contribuicaoSindicatoStatus:"OK",possuiMaisDeUmSindicato:false,sindicatosAdicionais:[],funcionarios:[],eventosPermitidos:[]}; state.empresas.push(emp)}
@@ -117,7 +117,7 @@ function carregarEmpresaCadastro(i){
 }
 function carregarEmpresaCadastroPorCodigo(codEmp){
   const e=state.empresas.find(emp=>String(emp.codigo)===String(codEmp))
-  if(!e)return alert("Empresa não localizada para edição.")
+  if(!e)return aviso("Empresa não localizada para edição.")
   empresaEditando=e.codigo
   // FIX v2.4: abre modal com HTML próprio — sem clonar o form, sem IDs duplicados
   abrirModalEmpresa(e)
@@ -208,10 +208,10 @@ function mEmpRenderEventos(){
   if(sel)sel.innerHTML='<option value="">Selecionar evento...</option>'+state.eventos.filter(ev=>!vinSet.has(labelEventoObj(ev))).map(ev=>{const v=labelEventoObj(ev);return`<option value="${esc(v)}">${esc(v)}</option>`}).join("")
 }
 function mEmpVincular(){
-  const label=document.getElementById("meEvtSel")?.value; if(!label)return alert("Selecione um evento.")
-  const e=state.empresas.find(emp=>String(emp.codigo)===String(empresaEditando)); if(!e)return alert("Salve a empresa antes de vincular eventos.")
+  const label=document.getElementById("meEvtSel")?.value; if(!label)return aviso("Selecione um evento.")
+  const e=state.empresas.find(emp=>String(emp.codigo)===String(empresaEditando)); if(!e)return aviso("Salve a empresa antes de vincular eventos.")
   if(!Array.isArray(e.eventosPermitidos))e.eventosPermitidos=[]
-  if(e.eventosPermitidos.includes(label))return alert("Este evento já está vinculado.")
+  if(e.eventosPermitidos.includes(label))return aviso("Este evento já está vinculado.")
   e.eventosPermitidos.push(label)
   e.eventosPermitidos.sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0])||a.localeCompare(b))
   save(); mEmpRenderEventos(); renderEventosEmpresa(); renderEmpEvtVincFormCad()
@@ -228,14 +228,14 @@ function mEmpSugerir(){
   ;(e.funcionarios||[]).forEach(f=>(f.eventos||[]).forEach(ev=>{const p=parseEventoLabel(ev.desc);if(p)set.add(`${p.codigo} - ${p.descricao}`)}))
   e.eventosPermitidos=[...set].sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0])||a.localeCompare(b))
   save(); mEmpRenderEventos(); renderEventosEmpresa(); renderEmpEvtVincFormCad()
-  alert("Eventos sugeridos adicionados com base nos funcionários desta empresa.")
+  aviso("Eventos sugeridos adicionados com base nos funcionários desta empresa.")
 }
 function mEmpSalvar(){
   const codNovo=(document.getElementById("meCod")?.value||"").trim()
-  if(!codNovo)return alert("Informe o código da empresa.")
+  if(!codNovo)return aviso("Informe o código da empresa.")
   let emp=state.empresas.find(e=>String(e.codigo)===String(empresaEditando))
   const novo=!emp
-  if(state.empresas.some(e=>e!==emp&&String(e.codigo)===String(codNovo)))return alert("Já existe outra empresa com este código.")
+  if(state.empresas.some(e=>e!==emp&&String(e.codigo)===String(codNovo)))return aviso("Já existe outra empresa com este código.")
   if(!confirm((novo?"Cadastrar nova":"Salvar alterações da")+" empresa?"))return
   if(novo){
     emp={codigo:codNovo,nome:"",tipo:"",statusCliente:"Ativo",clienteInativo:false,sindicato:"",vinculoSindicato:"Normal",dataBase:"",statusDataBase:"Em dia",dissidio:"",dataBaseObs:"",naoContribuiSindicatoObs:"",contribuicaoSindicatoStatus:"OK",possuiMaisDeUmSindicato:false,sindicatosAdicionais:[],sindicatosAdicionaisDetalhes:[],funcionarios:[],eventosPermitidos:[]}
@@ -268,7 +268,7 @@ function mEmpSalvar(){
 function cancelarEmpresaCadastro(){if((empCodCad.value||empNomeCad.value)&&!confirm("Cancelar edição/cadastro da empresa?"))return; limparEmpresaForm()}
 function salvarFuncionarioCadastro(){
   const empCod=funEmpCad.value, cod=funCodCad.value.trim()
-  if(!empCod||!cod)return alert("Informe empresa e código do funcionário.")
+  if(!empCod||!cod)return aviso("Informe empresa e código do funcionário.")
   const emp=state.empresas.find(e=>e.codigo===empCod); if(!emp)return
 
   // Se houver evento preenchido na tela e ele estiver em modo ALTERAÇÃO, atualiza o item editado.
@@ -279,8 +279,8 @@ function salvarFuncionarioCadastro(){
       funEventoTemp[funEventoEditIndex]=obj
       funEventoEditIndex=null
     }else if(confirm("Existe um evento padrão preenchido que ainda não foi adicionado. Deseja incluir antes de salvar?")){
-      if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return alert("O início não pode ser posterior ao fim.")
-      if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return alert("Este evento padrão já existe em um período sobreposto. Use Alterar para editar o período anterior.")
+      if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
+      if(funEventoTemp.some(a=>a.desc===obj.desc&&periodosEventosSobrepostos(a,obj)))return aviso("Este evento padrão já existe em um período sobreposto. Use Alterar para editar o período anterior.")
       funEventoTemp.push(obj)
     }
   }
@@ -467,7 +467,7 @@ function mFunExcluirPadrao(i){
 function mFunAddAuto(){
   const ev=document.getElementById("mfAutoEvento")?.value
   const qtd=document.getElementById("mfAutoQtd")?.value
-  if(!ev||!qtd)return alert("Informe evento e quantidade.")
+  if(!ev||!qtd)return aviso("Informe evento e quantidade.")
   const obj={evento:ev,qtd,inicio:document.getElementById("mfAutoInicio")?.value||"",fim:document.getElementById("mfAutoFim")?.value||""}
   if(funAutoEditIndex!==null){funAutoTemp[funAutoEditIndex]=obj;funAutoEditIndex=null}
   else{const idx=funAutoTemp.findIndex(a=>a.evento===ev); if(idx>=0){if(!confirm("Evento já existe. Deseja alterar?"))return; funAutoTemp[idx]=obj}else{if(!confirm("Cadastrar este evento automático?"))return; funAutoTemp.push(obj)}}
@@ -487,7 +487,7 @@ function mFunEditarAuto(i){
 }
 function mFunAddPadrao(){
   const ev=document.getElementById("mfPadEvento")?.value
-  if(!ev)return alert("Selecione o evento padrão.")
+  if(!ev)return aviso("Selecione o evento padrão.")
   const obj={desc:ev,valor:valorPadrao(document.getElementById("mfPadValor")?.value||""),obs:document.getElementById("mfPadObs")?.value||"",inicio:document.getElementById("mfPadInicio")?.value||"",fim:document.getElementById("mfPadFim")?.value||"",status:"Pendente"}
   // FIX: verificar modo edição ANTES de checar duplicata
   if(funEventoEditIndex!==null){
@@ -495,8 +495,8 @@ function mFunAddPadrao(){
     funEventoTemp[funEventoEditIndex]=obj
     funEventoEditIndex=null
   }else{
-    if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return alert("O início não pode ser posterior ao fim.")
-    if(funEventoTemp.some(a=>a.desc===ev&&periodosEventosSobrepostos(a,obj)))return alert("Este evento já existe em um período sobreposto. Use Alterar para editar o período anterior.")
+    if(obj.inicio&&obj.fim&&obj.inicio>obj.fim)return aviso("O início não pode ser posterior ao fim.")
+    if(funEventoTemp.some(a=>a.desc===ev&&periodosEventosSobrepostos(a,obj)))return aviso("Este evento já existe em um período sobreposto. Use Alterar para editar o período anterior.")
     if(!confirm("Cadastrar este evento padrão?"))return
     funEventoTemp.push(obj)
   }
@@ -553,7 +553,7 @@ function salvarMiniModalEvPad(){
 function mFunSalvar(){
   const empCod=document.getElementById("mfEmp")?.value
   const cod=(document.getElementById("mfCod")?.value||"").trim()
-  if(!empCod||!cod)return alert("Informe empresa e código do funcionário.")
+  if(!empCod||!cod)return aviso("Informe empresa e código do funcionário.")
   // Sincroniza campos do modal → form original
   funEmpCad.value=empCod
   funCodCad.value=cod
@@ -577,7 +577,7 @@ function limparEventosSemCadastro(salvar=true){
     removidos+=antes-emp.eventosPermitidos.length
   })
   if(salvar){
-    if(removidos>0)alert(removidos+" evento(s) sem cadastro foram removidos dos vínculos das empresas.")
+    if(removidos>0)aviso(removidos+" evento(s) sem cadastro foram removidos dos vínculos das empresas.")
     saved()
   }
   return removidos
@@ -612,13 +612,13 @@ function renderEmpEvtVincFormCad(){
 function addEventoEmpresaFormCad(){
   const sel=document.getElementById("empEvtVincSelect")
   const label=sel?.value
-  if(!label)return alert("Selecione um evento para vincular.")
+  if(!label)return aviso("Selecione um evento para vincular.")
   const codEmp=empresaEditando
-  if(!codEmp)return alert("Salve a empresa primeiro para vincular eventos.")
+  if(!codEmp)return aviso("Salve a empresa primeiro para vincular eventos.")
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
-  if(!emp)return alert("Empresa não localizada.")
+  if(!emp)return aviso("Empresa não localizada.")
   if(!Array.isArray(emp.eventosPermitidos))emp.eventosPermitidos=[]
-  if(emp.eventosPermitidos.includes(label))return alert("Este evento já está vinculado.")
+  if(emp.eventosPermitidos.includes(label))return aviso("Este evento já está vinculado.")
   emp.eventosPermitidos.push(label)
   emp.eventosPermitidos.sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0])||a.localeCompare(b))
   save()
@@ -638,7 +638,7 @@ function delEventoEmpresaFormCad(idx){
 }
 function sugerirEventosEmpresaFormCad(){
   const codEmp=empresaEditando
-  if(!codEmp)return alert("Salve a empresa primeiro.")
+  if(!codEmp)return aviso("Salve a empresa primeiro.")
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
   if(!emp)return
   const set=new Set(emp.eventosPermitidos||[])
@@ -647,14 +647,14 @@ function sugerirEventosEmpresaFormCad(){
   save()
   renderEmpEvtVincFormCad()
   renderEventosEmpresa()
-  alert("Eventos sugeridos adicionados com base nos funcionários desta empresa.")
+  aviso("Eventos sugeridos adicionados com base nos funcionários desta empresa.")
 }
 function addEventoEmpresa(){
   const empCod=evEmp.value
   const label=evCodEmpresa.value
-  if(!empCod||!label)return alert("Selecione empresa e código/evento.")
+  if(!empCod||!label)return aviso("Selecione empresa e código/evento.")
   const arr=eventosEmpresa(empCod)
-  if(arr.includes(label))return alert("Este código já está vinculado a esta empresa.")
+  if(arr.includes(label))return aviso("Este código já está vinculado a esta empresa.")
   arr.push(label)
   arr.sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0]) || a.localeCompare(b))
   saved()
@@ -668,13 +668,13 @@ function delEventoEmpresa(empCod,label){
     i=arr.findIndex(x=>normalizar(x)===normalizar(label))
   }
   if(i>=0){arr.splice(i,1); salvarAgora(); renderEventosEmpresa(); renderEmp(); return}
-  alert("Não consegui localizar esse vínculo para desvincular. Atualize a tela e tente novamente.")
+  aviso("Não consegui localizar esse vínculo para desvincular. Atualize a tela e tente novamente.")
 }
 function delEventoEmpresaIndex(empCod,index){
   const arr=eventosEmpresa(empCod)
   const i=Number(index)
   if(Number.isInteger(i)&&i>=0&&i<arr.length){arr.splice(i,1); salvarAgora(); renderEventosEmpresa(); renderEmp(); return}
-  alert("Não consegui localizar esse vínculo para desvincular. Atualize a tela e tente novamente.")
+  aviso("Não consegui localizar esse vínculo para desvincular. Atualize a tela e tente novamente.")
 }
 function sugerirEventosEmpresaSelecionada(){
   const empCod=evEmp.value

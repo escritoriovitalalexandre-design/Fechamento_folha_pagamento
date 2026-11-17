@@ -1,7 +1,7 @@
 async function init(){
   const cfg = getSBConfig();
   if(!window.supabase){
-    alert("Não consegui carregar a biblioteca do Supabase. Verifique a internet e recarregue a página (F5).");
+    aviso("Não consegui carregar a biblioteca do Supabase. Verifique a internet e recarregue a página (F5).");
     return;
   }
   sbClient = window.supabase.createClient(cfg.url, cfg.anon);

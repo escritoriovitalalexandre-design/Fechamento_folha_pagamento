@@ -189,3 +189,9 @@ body.modal-aberto{overflow:hidden}
 .mod-actions-inline{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .mod-actions-inline input,.mod-actions-inline select{min-width:110px}
 
+/* Avisos na tela (js/00-avisos.js) */
+.aviso-fundo{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200000;display:flex;align-items:center;justify-content:center;padding:16px}
+.aviso-caixa{background:#fff;color:var(--ink);border-radius:14px;max-width:520px;width:100%;padding:22px 22px 16px;box-shadow:0 20px 60px rgba(0,0,0,.25);border-top:5px solid var(--pri)}
+.aviso-caixa.aviso-alerta{border-top-color:var(--red)}
+.aviso-texto{white-space:pre-wrap;font-size:14.5px;line-height:1.45;max-height:60vh;overflow:auto}
+.aviso-ok{display:block;margin:16px 0 0 auto;min-width:96px}

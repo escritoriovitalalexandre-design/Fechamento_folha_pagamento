@@ -172,14 +172,14 @@ function addFeriadoMes(){
   const data=prompt("Data do feriado (DD/MM):\nEx: 15/07","")
   if(!data)return
   const m=String(data).trim().match(/^(\d{2})\/(\d{2})$/)
-  if(!m)return alert("Informe a data no formato DD/MM.")
+  if(!m)return aviso("Informe a data no formato DD/MM.")
   const nome=prompt("Nome do feriado:","")
   if(!nome)return
   const c=regraComp()
   const ano=c.split("-")[0]
   const isoData=`${ano}-${m[2]}-${m[1]}`
   const lista=feriadosCompetencia(c)
-  if(lista.find(f=>f.data===isoData))return alert("Esta data já está cadastrada.")
+  if(lista.find(f=>f.data===isoData))return aviso("Esta data já está cadastrada.")
   lista.push({data:isoData,nome:nome.trim()})
   lista.sort((a,b)=>a.data.localeCompare(b.data))
   save()
@@ -347,13 +347,13 @@ function renderRegraLinhasList(){
 }
 function addRegraLinha(){
   const dias=DIAS_SEMANA_IDS.map((id,i)=>document.getElementById(id)?.checked?i:null).filter(x=>x!==null)
-  if(!dias.length)return alert("Selecione pelo menos um dia da semana.")
+  if(!dias.length)return aviso("Selecione pelo menos um dia da semana.")
   const hh=document.getElementById("rLinhaHH")?.value||"0"
   const mm=document.getElementById("rLinhaMM")?.value||"0"
   const valorTexto=(document.getElementById("rLinhaValor")?.value||"").trim()
   const valorDia=valorTexto?Number(valorTexto.includes(",")?valorTexto.replace(/\./g,"").replace(",","."):valorTexto):0
-  if(valorTexto&&(!Number.isFinite(valorDia)||valorDia<0))return alert("Informe um valor válido.")
-  if(!parseInt(hh)&&!parseInt(mm)&&!valorDia)return alert("Informe horas ou valor por dia.")
+  if(valorTexto&&(!Number.isFinite(valorDia)||valorDia<0))return aviso("Informe um valor válido.")
+  if(!parseInt(hh)&&!parseInt(mm)&&!valorDia)return aviso("Informe horas ou valor por dia.")
   regraLinhasTemp.push({dias,hh:String(parseInt(hh)||0),mm:String(parseInt(mm)||0),valorDia})
   DIAS_SEMANA_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false})
   if(document.getElementById("rLinhaHH"))rLinhaHH.value=""
@@ -431,11 +431,11 @@ function salvarModalRegra(){
   const empCod=document.getElementById("regraEmpSel")?.value
   const funCod=document.getElementById("regraFunSel")?.value
   const evento=document.getElementById("regraEvtSel")?.value
-  if(!empCod||!funCod||!evento)return alert("Selecione empresa, funcionário e evento.")
-  if(!regraLinhasTemp.length)return alert("Adicione pelo menos uma linha de dias, horas ou valor.")
+  if(!empCod||!funCod||!evento)return aviso("Selecione empresa, funcionário e evento.")
+  if(!regraLinhasTemp.length)return aviso("Adicione pelo menos uma linha de dias, horas ou valor.")
   const emp=state.empresas.find(e=>e.codigo===empCod)
   const fun=emp?.funcionarios.find(f=>f.codigo===funCod)
-  if(!fun)return alert("Funcionário não localizado.")
+  if(!fun)return aviso("Funcionário não localizado.")
   normalizarRegrasFuncionario(fun)
   const regra={
     evento,
@@ -446,8 +446,8 @@ function salvarModalRegra(){
     fim:document.getElementById("regraFim")?.value||"",
     desconsiderarFeriados:{}
   }
-  if(regra.inicio&&regra.fim&&regra.inicio>regra.fim)return alert("O início não pode ser posterior ao fim.")
-  if(fun.regrasDiaSemana.some((r,i)=>i!==regraEditandoIdx&&r.evento===evento&&periodosEventosSobrepostos(r,regra)))return alert("Já existe regra deste código com período sobreposto. Informe início e fim fora do período anterior para preservar o histórico.")
+  if(regra.inicio&&regra.fim&&regra.inicio>regra.fim)return aviso("O início não pode ser posterior ao fim.")
+  if(fun.regrasDiaSemana.some((r,i)=>i!==regraEditandoIdx&&r.evento===evento&&periodosEventosSobrepostos(r,regra)))return aviso("Já existe regra deste código com período sobreposto. Informe início e fim fora do período anterior para preservar o histórico.")
   if(!confirm((regraEditandoIdx!==null?"Salvar alterações da":"Cadastrar nova")+" regra especial?"))return
   if(regraEditandoIdx!==null&&regraEditandoIdx!==undefined){
     const anterior=fun.regrasDiaSemana[regraEditandoIdx]
@@ -509,10 +509,10 @@ function addFeriadoFixo(){
   const dataRaw=(document.getElementById("ffData")?.value||"").trim()
   const nome=(document.getElementById("ffNome")?.value||"").trim()
   const tipo=document.getElementById("ffTipo")?.value||"Municipal"
-  if(!dataRaw.match(/^\d{2}\/\d{2}$/))return alert("Informe a data no formato DD/MM.")
-  if(!nome)return alert("Informe o nome do feriado.")
+  if(!dataRaw.match(/^\d{2}\/\d{2}$/))return aviso("Informe a data no formato DD/MM.")
+  if(!nome)return aviso("Informe o nome do feriado.")
   const lista=getFeriadosFixos()
-  if(lista.find(f=>f.data===dataRaw))return alert("Já existe um feriado nesta data.")
+  if(lista.find(f=>f.data===dataRaw))return aviso("Já existe um feriado nesta data.")
   lista.push({data:dataRaw,nome,tipo})
   lista.sort((a,b)=>a.data.localeCompare(b.data))
   if(document.getElementById("ffData"))document.getElementById("ffData").value=""
@@ -570,7 +570,7 @@ function mostrarPainelExclusao(){
 function confirmarExclusaoRegra(){
   if(regraEditandoEmp===null||regraEditandoFun===null||regraEditandoIdx===null)return
   const dataEfeito=document.getElementById("dataEfeitoExclusao")?.value
-  if(!dataEfeito)return alert("Informe a competência a partir da qual excluir.")
+  if(!dataEfeito)return aviso("Informe a competência a partir da qual excluir.")
   if(!confirm("Confirmar exclusão a partir de "+fmtMesRefLocal(dataEfeito)+"?"))return
   const emp=state.empresas.find(e=>e.codigo===regraEditandoEmp)
   const fun=emp?.funcionarios.find(f=>f.codigo===regraEditandoFun)

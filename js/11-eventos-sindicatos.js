@@ -29,8 +29,8 @@ function salvarEventoGlobal(i){
   const novoCod=document.getElementById(`ev-cod-${i}`).value.trim()
   const novaDesc=document.getElementById(`ev-desc-${i}`).value.trim()
   const novoTipo=document.getElementById(`ev-tipo-${i}`).value
-  if(!novoCod||!novaDesc)return alert("Informe código e descrição.")
-  if(state.eventos.some((x,idx)=>idx!==i&&x.codigo===novoCod))return alert("Já existe outro evento com este código.")
+  if(!novoCod||!novaDesc)return aviso("Informe código e descrição.")
+  if(state.eventos.some((x,idx)=>idx!==i&&x.codigo===novoCod))return aviso("Já existe outro evento com este código.")
   const mudou=novoCod!==ev.codigo||novaDesc!==ev.descricao
   if(mudou){
     const qtd=state.empresas.filter(emp=>(emp.eventosPermitidos||[]).includes(oldLabel)).length
@@ -56,7 +56,7 @@ function salvarEventoGlobal(i){
   _evEditIdx=null
   saved()
 }
-function addEventoBase(){const c=codNovo.value.trim(),d=descNovo.value.trim(); if(!c||!d)return alert("Informe código e descrição."); if(state.eventos.some(e=>e.codigo===c))return alert("Código já cadastrado."); const noturno=!!(document.getElementById("noturnoNovo")?.checked); state.eventos.push({codigo:c,descricao:d,tipo:tipoNovo.value,noturno}); state.eventos.sort((a,b)=>Number(a.codigo)-Number(b.codigo)); codNovo.value=""; descNovo.value=""; if(document.getElementById("noturnoNovo"))noturnoNovo.checked=false; saved()}
+function addEventoBase(){const c=codNovo.value.trim(),d=descNovo.value.trim(); if(!c||!d)return aviso("Informe código e descrição."); if(state.eventos.some(e=>e.codigo===c))return aviso("Código já cadastrado."); const noturno=!!(document.getElementById("noturnoNovo")?.checked); state.eventos.push({codigo:c,descricao:d,tipo:tipoNovo.value,noturno}); state.eventos.sort((a,b)=>Number(a.codigo)-Number(b.codigo)); codNovo.value=""; descNovo.value=""; if(document.getElementById("noturnoNovo"))noturnoNovo.checked=false; saved()}
 
 
 
@@ -127,7 +127,7 @@ async function addSindicatoAnexos(files){
   if(!lista.length)return
   const tipo=document.getElementById("sindTipoAnexoCad")?.value||"Documento"
   for(const file of lista){
-    if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
+    if(file.size>10*1024*1024){aviso(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
     const marcador={id:Date.now()+Math.random(),tipo,nome:file.name,tamanho:file.size,enviando:true}
     sindicatoAnexosTemp.push(marcador); renderSindicatoAnexosTemp()
     const anexo=await uploadAnexoStorage(file,tipo)
@@ -147,7 +147,7 @@ function renderSindicatoLiberacaoTemp(){
 }
 async function addSindicatoLiberacao(files){
   const file=Array.from(files||[])[0]; if(!file)return
-  if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);return}
+  if(file.size>10*1024*1024){aviso(`O arquivo ${file.name} tem mais de 10 MB.`);return}
   const tipo="Liberação domingo/feriado"
   sindLiberacaoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderSindicatoLiberacaoTemp()
   const anexo=await uploadAnexoStorage(file,tipo)
@@ -162,7 +162,7 @@ async function addSindicatoAnexosEdit(files){
   const lista=Array.from(files||[]); if(!lista.length)return
   const tipo=document.getElementById("sindTipoAnexoEdit")?.value||"Documento"
   for(const file of lista){
-    if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
+    if(file.size>10*1024*1024){aviso(`O arquivo ${file.name} tem mais de 10 MB.`);continue}
     const marcador={id:Date.now()+Math.random(),tipo,nome:file.name,tamanho:file.size,enviando:true}
     sindEditAnexosTemp.push(marcador); renderSindEditAnexos()
     const anexo=await uploadAnexoStorage(file,tipo)
@@ -177,7 +177,7 @@ function renderSindEditLiberacao(){
 }
 async function addSindicatoLiberacaoEdit(files){
   const file=Array.from(files||[])[0]; if(!file)return
-  if(file.size>10*1024*1024){alert(`O arquivo ${file.name} tem mais de 10 MB.`);return}
+  if(file.size>10*1024*1024){aviso(`O arquivo ${file.name} tem mais de 10 MB.`);return}
   const tipo="Liberação domingo/feriado"
   sindEditLiberacaoTemp={tipo,nome:file.name,tamanho:file.size,enviando:true}; renderSindEditLiberacao()
   const anexo=await uploadAnexoStorage(file,tipo)
@@ -201,8 +201,8 @@ function abrirEditarSindicato(i){
 }
 function fecharEditarSindicato(){modalSindEdit.classList.remove("open")}
 function salvarEditarSindicato(){
-  const s=state.sindicatos.find(x=>String(x.id)===String(sindEditIdAtual)); if(!s)return alert("Sindicato não encontrado.")
-  const nome=sindNomeEdit.value.trim(); if(!nome)return alert("Informe o nome do sindicato.")
+  const s=state.sindicatos.find(x=>String(x.id)===String(sindEditIdAtual)); if(!s)return aviso("Sindicato não encontrado.")
+  const nome=sindNomeEdit.value.trim(); if(!nome)return aviso("Informe o nome do sindicato.")
   s.nome=nome; s.razao=sindRazaoEdit.value.trim(); s.cnpj=sindCnpjEdit.value.trim()
   s.contatoNome=sindContatoNomeEdit.value.trim(); s.contato=sindContatoEdit.value.trim(); s.email=sindEmailEdit.value.trim()
   salvarStatusSindicato(s,document.getElementById("sindStatusDataBaseEdit").value)
@@ -236,7 +236,7 @@ function renderBeneficiosSind(){
 function addBeneficioSind(){
   const nome=document.getElementById("sindBenefNome").value.trim()
   const obs=document.getElementById("sindBenefObs").value.trim()
-  if(!nome)return alert("Informe o nome do item de benefício.")
+  if(!nome)return aviso("Informe o nome do item de benefício.")
   if(sindBenefEditIndex!==null){sindBeneficiosTemp[sindBenefEditIndex]={...sindBeneficiosTemp[sindBenefEditIndex],nome,obs}; sindBenefEditIndex=null}
   else{sindBeneficiosTemp.push({id:Date.now()+Math.random(),nome,obs})}
   document.getElementById("sindBenefNome").value=""; document.getElementById("sindBenefObs").value=""
@@ -269,8 +269,8 @@ function _chkFmt(s){const on=document.getElementById("chkNormaliza");const norm=
 function _chkTituloPadrao(){return "Checklist de benefícios e descontos do funcionário"}
 function _chkBloco(s){s=_chkFmt(String(s||""));const html=s.split(/\r?\n/).map(function(l){if(!l.trim())return '<div style="height:8px"></div>';return '<p style="margin:0 0 6px;line-height:1.7;text-align:justify">'+esc(l)+'</p>'}).join("");return html||'<p style="margin:0"></p>'}
 function abrirChecklistBenef(){
-  const s=_chkSindAtual(); if(!s)return alert("Abra um sindicato primeiro.")
-  if(!Array.isArray(s.beneficios)||!s.beneficios.length)return alert("Cadastre itens de benefício antes de gerar o checklist.")
+  const s=_chkSindAtual(); if(!s)return aviso("Abra um sindicato primeiro.")
+  if(!Array.isArray(s.beneficios)||!s.beneficios.length)return aviso("Cadastre itens de benefício antes de gerar o checklist.")
   const cfg=s.checklistConfig||{}
   document.getElementById("chkTitulo").value=cfg.titulo||_chkTituloPadrao()
   document.getElementById("chkCliente").value=cfg.cliente||s.razao||""
@@ -316,7 +316,7 @@ function _chkDocHTML(){
 }
 function imprimirChecklist(){
   salvarChecklistTextos()
-  const w=window.open("","_blank"); if(!w)return alert("Permita pop-ups para imprimir.")
+  const w=window.open("","_blank"); if(!w)return aviso("Permita pop-ups para imprimir.")
   w.document.write('<html><head><meta charset="utf-8"><title>Checklist de benefícios</title></head><body style="margin:24px">'+_chkDocHTML()+'</body></html>')
   w.document.close(); w.focus(); setTimeout(()=>{w.print()},300)
 }
@@ -331,7 +331,7 @@ function exportarChecklistWord(){
 }
 function salvarSindicatoCadastro(){
   const nome=sindNomeCad.value.trim()
-  if(!nome)return alert("Informe o nome do sindicato.")
+  if(!nome)return aviso("Informe o nome do sindicato.")
   let s=state.sindicatos.find(x=>x.nome===nome)
   if(!s){s={id:Date.now(),nome:""}; state.sindicatos.push(s)}
   s.nome=nome

@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+<!-- Versão fixa do supabase-js (antes "@2" puxava sempre a mais nova). Para atualizar: troque a versão e o integrity. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"
+  integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb"
   crossorigin="anonymous"></script>
 <script src="js/logo.js"></script>
 <title>Controle de Fechamento da Folha — v3.4 | Migração cobre acesso específico por empresa | 2026-07-13</title>
@@ -826,6 +828,7 @@
 </div>
 
 <!-- Código do sistema, carregado nesta ordem (as funções são globais e usadas nos onclick do HTML) -->
+<script src="js/00-avisos.js"></script>
 <script src="js/01-base-inicial.js"></script>
 <script src="js/02-supabase.js"></script>
 <script src="js/03-estado.js"></script>

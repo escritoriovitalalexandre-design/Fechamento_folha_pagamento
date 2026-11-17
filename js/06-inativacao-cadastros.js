@@ -39,7 +39,7 @@ Ele não aparecerá no fechamento mensal nem no relatório da competência infor
 Competências anteriores serão preservadas.`,sugerida)
   if(inicio===null)return null
   inicio=normalizarCompetenciaPrompt(inicio)
-  if(!inicio){alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
+  if(!inicio){aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
   return inicio
 }
 function aplicarStatusFuncionarioInativo(fun,novoStatus){
@@ -96,7 +96,7 @@ Ela não aparecerá no fechamento mensal, relatório de lançamento, painel nem 
 Competências anteriores serão preservadas.`,sugerida)
   if(inicio===null)return null
   inicio=normalizarCompetenciaPrompt(inicio)
-  if(!inicio){alert("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
+  if(!inicio){aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
   return inicio
 }
 function aplicarStatusEmpresaInativa(emp,novoStatus){

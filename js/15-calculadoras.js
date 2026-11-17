@@ -1,29 +1,4 @@
-function facToggle(id){
-  const el=document.getElementById(id)
-  if(!el)return
-  const open=el.style.display==="block"
-  el.style.display=open?"none":"block"
-  const chev=document.getElementById(id+"Chev")
-  if(chev)chev.textContent=open?"▼":"▲"
-  if(!open){
-    if(id==="facJornada")fjRender()
-    if(id==="facConv")facCalcConv()
-    if(id==="facFicta")facCalcFicta()
-    if(id==="facNot")facCalcNot()
-    if(id==="facCalcH")facCalc()
-  }
-}
-function facMinToHHMM(min){
-  const neg=min<0;min=Math.abs(min)
-  const h=Math.floor(min/60),m=Math.round(min%60)
-  return (neg?"-":"")+(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"))
-}
-function facHHMMToMin(s){
-  s=String(s||"").trim()
-  const m=s.match(/^(\d+):(\d{2})$/)
-  if(!m)return NaN
-  return parseInt(m[1])*60+parseInt(m[2])
-}
+// facToggle, facMinToHHMM e facHHMMToMin ficam definidas mais abaixo (a versão que sempre valeu).
 function facTimeInputToMin(id){
   const v=document.getElementById(id)?.value||""
   return facHHMMToMin(v)

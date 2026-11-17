@@ -49,17 +49,17 @@ function montarHtmlRelatorioPDF(){
 }
 function gerarPDFRelatorio(){
   const w=window.open("","_blank")
-  if(!w)return alert("O navegador bloqueou a janela do PDF. Libere pop-ups para este arquivo e tente novamente.")
+  if(!w)return aviso("O navegador bloqueou a janela do PDF. Libere pop-ups para este arquivo e tente novamente.")
   w.document.open()
   w.document.write(montarHtmlRelatorioPDF())
   w.document.close()
 }
 function csv(){const rows=relRows(relCompetenciaFiltro(), empresasRelatorioSelecionadas()); const h=["competencia","codigo_empresa","empresa","sindicato","data_base","status_data_base","codigo_funcionario","funcionario","funcao","salario","codigo_evento","evento","valor","inicio","fim","observacao","evento_padrao","status_funcionario","status_evento"]; return [h.join(";")].concat(rows.map(r=>[r.comp,r.codEmp,r.empresa,r.sind,r.db,r.dbStatus,r.codFunc,r.func,r.funcao,r.sal,r.codEvento,r.evento,r.valor,r.inicio,r.fim,r.obs,r.eventoPadrao,r.statusFunc,r.statusEvento].map(x=>`"${String(x??"").replaceAll('"','""')}"`).join(";"))).join("\n")}
 function downloadCSV(){const blob=new Blob(["\ufeff"+csv()],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="folha_lancamentos_"+relCompetenciaFiltro()+".csv"; a.click()}
-function copyCSV(){navigator.clipboard.writeText(csv()).then(()=>alert("Relatório copiado."))}
+function copyCSV(){navigator.clipboard.writeText(csv()).then(()=>aviso("Relatório copiado."))}
 function backup(){}
 function toggleDadosTecnicos(){const area=document.getElementById("dadosTecnicosArea");const aberto=area.style.display!=="none";area.style.display=aberto?"none":"block";if(!aberto)document.getElementById("backupTxt").value=JSON.stringify(state,null,2)}
 function downloadBackup(){const now=new Date();const d=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");const h=String(now.getHours()).padStart(2,"0")+"h"+String(now.getMinutes()).padStart(2,"0");const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="backup_fechamento_folha_"+d+"_"+h+".json"; a.click();const info=document.getElementById("ultimoBackupInfo");if(info)info.textContent="Último backup gerado em: "+d+" às "+h.replace("h",":")}
-function restoreBackup(ev){const file=ev.target.files[0]; if(!file)return; const r=new FileReader(); r.onload=()=>{try{state=normalizarState(JSON.parse(r.result)); save(); popularEmpresas(); renderAll(); alert("Backup restaurado e sincronizado com o Supabase.")}catch(e){alert("Arquivo inválido.")}}; r.readAsText(file)}
+function restoreBackup(ev){const file=ev.target.files[0]; if(!file)return; const r=new FileReader(); r.onload=()=>{try{state=normalizarState(JSON.parse(r.result)); save(); popularEmpresas(); renderAll(); aviso("Backup restaurado e sincronizado com o Supabase.")}catch(e){aviso("Arquivo inválido.")}}; r.readAsText(file)}
 function resetAppConfirm(){if(!confirm("⚠️ ATENÇÃO\n\nEsta ação irá apagar todos os dados salvos neste navegador e no Supabase, e deixar o sistema vazio (só com o catálogo padrão de eventos).\n\nIsso não pode ser desfeito.\n\nBaixe um backup antes de continuar!\n\nDeseja realmente resetar?")){return}if(!confirm("Confirmar reset? Esta é a segunda e última confirmação.")){return}localStorage.removeItem(KEY); const s=clone(SEED); state=normalizarState(s); save(); popularEmpresas(); renderAll()}
 
