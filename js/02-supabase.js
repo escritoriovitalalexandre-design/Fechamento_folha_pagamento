@@ -40,12 +40,12 @@ async function baixarVersao(id){
 }
 
 // Outra pessoa gravou depois que este navegador leu os dados.
-function tratarConflitoGravacao(){
+async function tratarConflitoGravacao(){
   modoSomenteLeitura = true;
   if(_lockTimer) clearInterval(_lockTimer);
   showSync("error", "NÃO salvou (conflito)");
   setConexao(false);
-  const baixar = confirm("⚠️ Outra pessoa salvou alterações no sistema depois que você abriu esta tela.\n\n"
+  const baixar = await confirmar("⚠️ Outra pessoa salvou alterações no sistema depois que você abriu esta tela.\n\n"
     + "Sua última alteração NÃO foi gravada, para não apagar o trabalho dela.\n\n"
     + "OK = baixar um arquivo com as SUAS alterações e recarregar a versão mais nova (depois refaça o que faltar).\n"
     + "Cancelar = continuar olhando esta tela em modo somente leitura.");
@@ -297,7 +297,7 @@ async function migrarAnexoObjeto(a){
 }
 async function migrarAnexosAntigos(){
   if(!sbClient){ aviso("Conecte ao Supabase primeiro (verifique a bolinha de conexão)."); return; }
-  if(!confirm("Isso vai reenviar para o Supabase Storage os documentos anexados ANTES da atualização (v3.2). Nada é apagado; se algum arquivo falhar, ele continua como está. Pode demorar alguns minutos dependendo da quantidade de anexos. Continuar?")) return;
+  if(!await confirmar("Isso vai reenviar para o Supabase Storage os documentos anexados ANTES da atualização (v3.2). Nada é apagado; se algum arquivo falhar, ele continua como está. Pode demorar alguns minutos dependendo da quantidade de anexos. Continuar?")) return;
   const info = document.getElementById("migracaoAnexosInfo");
   if(info) info.textContent = "Migrando, aguarde...";
   let total=0, ok=0;

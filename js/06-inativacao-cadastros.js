@@ -28,9 +28,9 @@ function funcionarioVisivelCadastro(fun,c,mostrarInativos,mostrarExcluidos){
   if(funcionarioAtivoNaCompetencia(fun,c))return true
   return !!mostrarInativos && funcionarioInativoNaCompetencia(fun,c)
 }
-function pedirCompetenciaInativacaoFuncionario(fun){
+async function pedirCompetenciaInativacaoFuncionario(fun){
   const sugerida=String(fun?.inativoApartir||competenciaBasePrompt()||"")
-  let inicio=prompt(`A partir de qual competência o funcionário ${fun?.codigo||""} - ${fun?.nome||""} ficará INATIVO?
+  let inicio=await perguntar(`A partir de qual competência o funcionário ${fun?.codigo||""} - ${fun?.nome||""} ficará INATIVO?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida||"2026-05"}
@@ -42,10 +42,10 @@ Competências anteriores serão preservadas.`,sugerida)
   if(!inicio){aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
   return inicio
 }
-function aplicarStatusFuncionarioInativo(fun,novoStatus){
+async function aplicarStatusFuncionarioInativo(fun,novoStatus){
   if(novoStatus==="Inativo"){
     if(!normalizarCompetenciaPrompt(fun.inativoApartir)){
-      const inicio=pedirCompetenciaInativacaoFuncionario(fun)
+      const inicio=await pedirCompetenciaInativacaoFuncionario(fun)
       if(!inicio)return false
       fun.inativoApartir=inicio
     }
@@ -85,9 +85,9 @@ function empresaAtivaNaCompetencia(e,c){
   if(empresaInativaNaCompetencia(e,c))return false
   return true
 }
-function pedirCompetenciaInativacaoEmpresa(emp){
+async function pedirCompetenciaInativacaoEmpresa(emp){
   const sugerida=String(emp?.inativoApartir||competenciaBasePrompt()||"")
-  let inicio=prompt(`A partir de qual competência a empresa ${emp?.codigo||""} - ${emp?.nome||""} ficará INATIVA?
+  let inicio=await perguntar(`A partir de qual competência a empresa ${emp?.codigo||""} - ${emp?.nome||""} ficará INATIVA?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida||"2026-05"}
@@ -99,10 +99,10 @@ Competências anteriores serão preservadas.`,sugerida)
   if(!inicio){aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-05.");return null}
   return inicio
 }
-function aplicarStatusEmpresaInativa(emp,novoStatus){
+async function aplicarStatusEmpresaInativa(emp,novoStatus){
   if(novoStatus==="Inativo"){
     if(!normalizarCompetenciaPrompt(emp.inativoApartir)){
-      const inicio=pedirCompetenciaInativacaoEmpresa(emp)
+      const inicio=await pedirCompetenciaInativacaoEmpresa(emp)
       if(!inicio)return false
       emp.inativoApartir=inicio
     }

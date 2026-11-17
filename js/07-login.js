@@ -54,7 +54,7 @@ async function iniciarSeAutorizado(){
 }
 
 async function sair(){
-  if(!confirm("Deseja sair do sistema neste navegador?")) return;
+  if(!await confirmar("Deseja sair do sistema neste navegador?")) return;
   try{ if(!modoSomenteLeitura) await sbClient.from(SB_TABLE).delete().eq("chave", SB_CHAVE_LOCK); }catch(e){}
   await sbClient.auth.signOut({scope: "local"});
   location.reload();

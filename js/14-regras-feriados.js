@@ -168,12 +168,12 @@ let regraEditandoEmp=null
 let regraEditandoFun=null
 let regraEditandoIdx=null
 
-function addFeriadoMes(){
-  const data=prompt("Data do feriado (DD/MM):\nEx: 15/07","")
+async function addFeriadoMes(){
+  const data=await perguntar("Data do feriado (DD/MM):\nEx: 15/07","")
   if(!data)return
   const m=String(data).trim().match(/^(\d{2})\/(\d{2})$/)
   if(!m)return aviso("Informe a data no formato DD/MM.")
-  const nome=prompt("Nome do feriado:","")
+  const nome=await perguntar("Nome do feriado:","")
   if(!nome)return
   const c=regraComp()
   const ano=c.split("-")[0]
@@ -187,8 +187,8 @@ function addFeriadoMes(){
   renderRegras()
   renderFechamento()
 }
-function removerFeriadoMes(data){
-  if(!confirm("Remover este feriado?"))return
+async function removerFeriadoMes(data){
+  if(!await confirmar("Remover este feriado?"))return
   const c=regraComp()
   const lista=feriadosCompetencia(c)
   const idx=lista.findIndex(f=>f.data===data)
@@ -427,7 +427,7 @@ function fecharModalRegra(){
   regraEditandoFun=null
   regraEditandoIdx=null
 }
-function salvarModalRegra(){
+async function salvarModalRegra(){
   const empCod=document.getElementById("regraEmpSel")?.value
   const funCod=document.getElementById("regraFunSel")?.value
   const evento=document.getElementById("regraEvtSel")?.value
@@ -448,7 +448,7 @@ function salvarModalRegra(){
   }
   if(regra.inicio&&regra.fim&&regra.inicio>regra.fim)return aviso("O início não pode ser posterior ao fim.")
   if(fun.regrasDiaSemana.some((r,i)=>i!==regraEditandoIdx&&r.evento===evento&&periodosEventosSobrepostos(r,regra)))return aviso("Já existe regra deste código com período sobreposto. Informe início e fim fora do período anterior para preservar o histórico.")
-  if(!confirm((regraEditandoIdx!==null?"Salvar alterações da":"Cadastrar nova")+" regra especial?"))return
+  if(!await confirmar((regraEditandoIdx!==null?"Salvar alterações da":"Cadastrar nova")+" regra especial?"))return
   if(regraEditandoIdx!==null&&regraEditandoIdx!==undefined){
     const anterior=fun.regrasDiaSemana[regraEditandoIdx]
     regra.desconsiderarFeriados=anterior?.desconsiderarFeriados||{}
@@ -462,9 +462,9 @@ function salvarModalRegra(){
   renderRegras()
   renderFechamento()
 }
-function excluirRegraModal(){
+async function excluirRegraModal(){
   if(regraEditandoEmp===null||regraEditandoFun===null||regraEditandoIdx===null)return
-  if(!confirm("Excluir esta regra especial? Os lançamentos automáticos dela serão removidos do fechamento."))return
+  if(!await confirmar("Excluir esta regra especial? Os lançamentos automáticos dela serão removidos do fechamento."))return
   const emp=state.empresas.find(e=>e.codigo===regraEditandoEmp)
   const fun=emp?.funcionarios.find(f=>f.codigo===regraEditandoFun)
   if(!fun)return
@@ -523,8 +523,8 @@ function addFeriadoFixo(){
   renderRegras()
   renderFechamento()
 }
-function delFeriadoFixo(i){
-  if(!confirm("Excluir este feriado fixo?"))return
+async function delFeriadoFixo(i){
+  if(!await confirmar("Excluir este feriado fixo?"))return
   getFeriadosFixos().splice(i,1)
   save()
   renderTabFeriadosFixos()
@@ -567,11 +567,11 @@ function mostrarPainelExclusao(){
   if(de)de.value=regraComp()
   p.style.display="block"
 }
-function confirmarExclusaoRegra(){
+async function confirmarExclusaoRegra(){
   if(regraEditandoEmp===null||regraEditandoFun===null||regraEditandoIdx===null)return
   const dataEfeito=document.getElementById("dataEfeitoExclusao")?.value
   if(!dataEfeito)return aviso("Informe a competência a partir da qual excluir.")
-  if(!confirm("Confirmar exclusão a partir de "+fmtMesRefLocal(dataEfeito)+"?"))return
+  if(!await confirmar("Confirmar exclusão a partir de "+fmtMesRefLocal(dataEfeito)+"?"))return
   const emp=state.empresas.find(e=>e.codigo===regraEditandoEmp)
   const fun=emp?.funcionarios.find(f=>f.codigo===regraEditandoFun)
   if(!fun)return
@@ -591,9 +591,9 @@ function confirmarExclusaoRegra(){
   renderFechamento()
 }
 
-function confirmarAlternarStatusDB(empCod, statusAtual, nomeEmp){
+async function confirmarAlternarStatusDB(empCod, statusAtual, nomeEmp){
   const novo=statusAtual==="Em dia"?"Aguardando":"Em dia"
-  if(!confirm(`Alterar status de "${statusAtual}" → "${novo}"?\n\nEmpresa: ${nomeEmp}`))return
+  if(!await confirmar(`Alterar status de "${statusAtual}" → "${novo}"?\n\nEmpresa: ${nomeEmp}`))return
   alternarStatusDB(empCod)
 }
 function alternarStatusDB(empCod){

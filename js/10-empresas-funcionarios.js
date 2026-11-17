@@ -28,12 +28,12 @@ function removerEmpresaDosFechamentos(empCod,competenciaInicio){
     Object.keys(fe.funcionarios).forEach(ch=>{if(String(ch).startsWith(String(empCod)+"|"))delete fe.funcionarios[ch]})
   })
 }
-function excluirEmpresaCadastro(codEmp){
+async function excluirEmpresaCadastro(codEmp){
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
   if(!emp)return aviso("Empresa não localizada.")
   const sugerida=comp()||SEED.competenciaBase
   const qtdFunc=(emp.funcionarios||[]).length
-  let inicio=prompt(`Excluir/ocultar a empresa ${emp.codigo} - ${emp.nome} a partir de qual competência?
+  let inicio=await perguntar(`Excluir/ocultar a empresa ${emp.codigo} - ${emp.nome} a partir de qual competência?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida}
@@ -44,7 +44,7 @@ Funcionários cadastrados nesta empresa: ${qtdFunc}.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
   if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
-  if(!confirm(`Confirmar exclusão/ocultação da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?
+  if(!await confirmar(`Confirmar exclusão/ocultação da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?
 
 O sistema vai remover dos fechamentos de ${inicio} em diante.
 Competências anteriores não serão alteradas.`))return
@@ -55,12 +55,12 @@ Competências anteriores não serão alteradas.`))return
   saved()
 }
 
-function restaurarEmpresaCadastro(codEmp){
+async function restaurarEmpresaCadastro(codEmp){
   const emp=state.empresas.find(e=>String(e.codigo)===String(codEmp))
   if(!emp)return aviso("Empresa não localizada.")
   if(!String(emp.excluidoApartir||"").trim())return aviso("Esta empresa não está marcada como excluída.")
   const sugerida=comp()||SEED.competenciaBase
-  let inicio=prompt(`A partir de qual competência deseja RESTAURAR a empresa ${emp.codigo} - ${emp.nome}?
+  let inicio=await perguntar(`A partir de qual competência deseja RESTAURAR a empresa ${emp.codigo} - ${emp.nome}?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida}
@@ -70,7 +70,7 @@ As competências anteriores continuarão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
   if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
-  if(!confirm(`Confirmar restauração da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?`))return
+  if(!await confirmar(`Confirmar restauração da empresa ${emp.codigo} - ${emp.nome} a partir de ${inicio}?`))return
   emp.restauradoApartir=inicio
   saved()
 }
@@ -110,13 +110,13 @@ function renderFun(){
     return `<tr><td>${esc(x.e.nome)}${empBadge}</td><td>${esc(x.f.codigo)}</td><td><b>${esc(x.f.nome)}</b></td><td>${esc(x.f.funcao)}</td><td>${esc(fmtDataBR(x.f.admissao||""))}</td><td class="fun-salario-col"><b>R$ ${money(x.f.salario)}</b></td><td>${esc(x.f.statusDetectado)}${funBadge}</td><td>${(x.f.autoEventos||[]).map(a=>esc(a.evento+" x "+a.qtd)).join("<br>")}</td><td>${excluirInfo}</td><td>${esc((x.f.observacoes||[]).join(" | "))}</td><td><div class="action-line">${botoes}</div></td></tr>`
   }).join("")+"</tbody>"
 }
-function excluirFuncionarioCadastro(empCod,funCod){
+async function excluirFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
   if(!emp)return aviso("Empresa não localizada.")
   const f=(emp.funcionarios||[]).find(f=>String(f.codigo)===String(funCod))
   if(!f)return aviso("Funcionário não localizado.")
   const sugerida=comp()||SEED.competenciaBase
-  let inicio=prompt(`A partir de qual competência deseja excluir o funcionário ${f.codigo} - ${f.nome}?
+  let inicio=await perguntar(`A partir de qual competência deseja excluir o funcionário ${f.codigo} - ${f.nome}?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida}
@@ -125,7 +125,7 @@ As competências anteriores a esse mês serão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
   if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
-  if(!confirm(`Confirmar exclusão do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?
+  if(!await confirmar(`Confirmar exclusão do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?
 
 O sistema vai remover dos fechamentos de ${inicio} em diante.
 Competências anteriores não serão alteradas.`))return
@@ -136,14 +136,14 @@ Competências anteriores não serão alteradas.`))return
   saved()
 }
 
-function restaurarFuncionarioCadastro(empCod,funCod){
+async function restaurarFuncionarioCadastro(empCod,funCod){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod))
   if(!emp)return aviso("Empresa não localizada.")
   const f=(emp.funcionarios||[]).find(f=>String(f.codigo)===String(funCod))
   if(!f)return aviso("Funcionário não localizado.")
   if(!String(f.excluidoApartir||"").trim())return aviso("Este funcionário não está marcado como excluído.")
   const sugerida=comp()||SEED.competenciaBase
-  let inicio=prompt(`A partir de qual competência deseja RESTAURAR o funcionário ${f.codigo} - ${f.nome}?
+  let inicio=await perguntar(`A partir de qual competência deseja RESTAURAR o funcionário ${f.codigo} - ${f.nome}?
 
 Informe no formato AAAA-MM.
 Exemplo: ${sugerida}
@@ -153,7 +153,7 @@ As competências anteriores continuarão preservadas.`,sugerida)
   if(inicio===null)return
   inicio=String(inicio).trim()
   if(!/^\d{4}-\d{2}$/.test(inicio))return aviso("Informe a competência no formato AAAA-MM. Exemplo: 2026-04.")
-  if(!confirm(`Confirmar restauração do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?`))return
+  if(!await confirmar(`Confirmar restauração do funcionário ${f.codigo} - ${f.nome} a partir de ${inicio}?`))return
   f.restauradoApartir=inicio
   saved()
 }

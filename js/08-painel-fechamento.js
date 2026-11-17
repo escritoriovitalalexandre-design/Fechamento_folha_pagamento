@@ -47,12 +47,12 @@ function statusDBSindicatoAdicional(item){
   if(mdb<matual)return "Vencida"
   return "Em dia"
 }
-function confirmarAlternarStatusDBAdicional(empCod, idx, statusAtual, nomeEmp){
+async function confirmarAlternarStatusDBAdicional(empCod, idx, statusAtual, nomeEmp){
   const emp=state.empresas.find(e=>String(e.codigo)===String(empCod)); if(!emp)return
   const lista=sindicatoAdicionalDetalhesNormalizados(emp)
   const item=lista[idx]; if(!item)return
   const novo=statusAtual==="Em dia"?"Aguardando":"Em dia"
-  if(!confirm(`Alterar status de "${statusAtual}" → "${novo}"?\n\nEmpresa: ${nomeEmp}\nSindicato: ${item.nome}`))return
+  if(!await confirmar(`Alterar status de "${statusAtual}" → "${novo}"?\n\nEmpresa: ${nomeEmp}\nSindicato: ${item.nome}`))return
   item.statusDataBase=novo
   if(novo==="Em dia")item.dataBaseEmDiaAno=anoCompetencia(); else delete item.dataBaseEmDiaAno
   emp.sindicatosAdicionaisDetalhes=normalizarListaSindicatosAdic(lista,emp.sindicato)
@@ -117,13 +117,13 @@ function renderAlertas(){
   }).join(""):'<div class="alert"><strong>Nenhuma data-base para exibir'+((_filtroAlerta!=="todos")?" com este filtro":"")+'.</strong><div class="muted">Em dia: convenção regularizada. Aguardando: data-base do mês. Vencida: data-base passada ainda pendente. Marque "Ver todas as datas-base" para ampliar a lista.</div></div>'
 }
 function renderPainelDetalhes(){}
-function salvarEventoLinha(e,f,i,row){
+async function salvarEventoLinha(e,f,i,row){
   const item=find(e,f)
   if(!item)return aviso("Não localizei este funcionário no fechamento.")
   if(!item.x.eventos)item.x.eventos=[]
   const idx=Number(i)
   if(idx<0 || idx>=item.x.eventos.length)return aviso("Não localizei este evento para salvar.")
-  if(!confirm("Salvar alterações deste evento?"))return
+  if(!await confirmar("Salvar alterações deste evento?"))return
   const campos=row.querySelectorAll("select,input")
   const evAtual=item.x.eventos[idx]
   const origem=evAtual.origem || (evAtual.auto===true?"automatico":"manual")
@@ -316,7 +316,7 @@ function excluirEventoProximasCompetencias(empCod,funCod,ev){
     }
   })
 }
-function delEvento(e,f,i){
+async function delEvento(e,f,i){
   const item=find(e,f)
   if(!item)return aviso("Não localizei este funcionário no fechamento.")
   if(!Array.isArray(item.x.eventos))item.x.eventos=[]
@@ -325,11 +325,11 @@ function delEvento(e,f,i){
   const ev=clone(item.x.eventos[idx])
   const origem=ev.origem || (ev.auto===true ? "automatico" : "manual")
   if(origem==="manual-recorrente"){
-    if(confirm("Excluir este evento com prazo SOMENTE deste mês?\n\nOs outros meses continuam com o evento normalmente.")){
+    if(await confirmar("Excluir este evento com prazo SOMENTE deste mês?\n\nOs outros meses continuam com o evento normalmente.")){
       marcarExclusaoManualNaCompetencia(comp(),e,f,ev)
       save(); renderFechamento(); renderRel(); return
     }
-    if(confirm("Deseja excluir a SÉRIE INTEIRA (todos os meses) deste evento com prazo?\n\nEsta ação não pode ser desfeita.")){
+    if(await confirmar("Deseja excluir a SÉRIE INTEIRA (todos os meses) deste evento com prazo?\n\nEsta ação não pode ser desfeita.")){
       const def=acharDefManual(item.fun,ev)
       if(def)item.fun.eventosManuais.splice(item.fun.eventosManuais.indexOf(def),1)
       save(); renderFechamento(); renderRel()
@@ -339,13 +339,13 @@ function delEvento(e,f,i){
   if(origem!=="manual"){
     return aviso("Este evento é automático ou padrão do funcionário. Para excluir, acesse o cadastro do funcionário e remova o evento por lá.")
   }
-  if(!confirm(`Excluir este evento manual da competência atual?
+  if(!await confirmar(`Excluir este evento manual da competência atual?
 
 As competências anteriores não serão alteradas.`))return
 
   item.x.eventos.splice(idx,1)
 
-  if(confirm(`Deseja excluir este mesmo evento manual também das próximas competências ainda não conferidas?
+  if(await confirmar(`Deseja excluir este mesmo evento manual também das próximas competências ainda não conferidas?
 
 As competências anteriores nunca serão alteradas automaticamente.`)){
     excluirEventoProximasCompetencias(e,f,ev)
@@ -374,11 +374,11 @@ function relRows(cFiltro, empresasFiltro){
     return rows
   })
 }
-function editarObsDataBase(codEmp){
+async function editarObsDataBase(codEmp){
   const emp=state.empresas.find(e=>e.codigo===codEmp)
   if(!emp)return
   const atual=emp.dataBaseObs||""
-  const txt=prompt("Anotação da data-base desta empresa:", atual)
+  const txt=await perguntar("Anotação da data-base desta empresa:", atual)
   if(txt===null)return
   emp.dataBaseObs=txt
   saved()
