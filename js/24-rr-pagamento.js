@@ -78,11 +78,11 @@ function rrRenderPagamento(){
   if(d.empCod && d.ref && !d.salario){ const f = rrFuncionario(d.empCod, d.ref); if(f) d.salario = rrBRL(f.salario); }
   rrRecalcularPagamento(d);
   const campo = (rot, html, dica) => `<div><label>${rot}</label>${html}${dica?`<div class="muted" style="font-size:11px;margin-top:2px">${dica}</div>`:""}</div>`;
-  const inp = (k, tipo, extra) => `<input ${tipo?`type="${tipo}"`:""} value="${esc(d[k]??"")}" onchange="rrPagamentoAtual.${k}=this.value; rrRenderPagamento()" ${extra||""}>`;
-  const tipos = Object.entries(RR_TIPOS_RECIBO).map(([k,nome])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipoRec" ${d.tipo===k?"checked":""} onchange="rrPagamentoAtual.tipo='${k}'; rrRenderPagamento()"> ${esc({salario:"Salário",horas_extras:"Horas extras",adiantamento:"Adiantamento",decimo:"13º salário",outros:"Outros"}[k])}</label>`).join("");
+  const inp = (k, tipo, extra) => rrInput("rrPagamentoAtual", d, k, tipo, extra==="moeda"?"moeda":"", extra==="moeda"?"":extra, "rrRenderPagamento");
+  const tipos = Object.entries(RR_TIPOS_RECIBO).map(([k,nome])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipoRec" ${d.tipo===k?"checked":""} onchange="rrPagamentoAtual.tipo='${k}'; rrAgendar(rrRenderPagamento)"> ${esc({salario:"Salário",horas_extras:"Horas extras",adiantamento:"Adiantamento",decimo:"13º salário",outros:"Outros"}[k])}</label>`).join("");
   const extras = d.tipo==="horas_extras" ? `${campo("Horas extras 50%", inp("horas50"), "Ex.: 10 ou 7,5")}${campo("Horas extras 100%", inp("horas100"))}${campo("Divisor de horas", inp("divisor","number"), "220 para 44h semanais")}`
     : d.tipo==="adiantamento" ? campo("Percentual do adiantamento", inp("pctAdiant","number"), "Normalmente 40%")
-    : d.tipo==="decimo" ? `${campo("Parcela", `<select onchange="rrPagamentoAtual.parcela13=this.value; rrRenderPagamento()"><option value="1"${d.parcela13==="1"?" selected":""}>1ª parcela (até 30/11)</option><option value="2"${d.parcela13==="2"?" selected":""}>2ª parcela (até 20/12)</option></select>`)}${campo("Avos de 13º", inp("avos13","number",'min="1" max="12"'), "Meses trabalhados no ano")}`
+    : d.tipo==="decimo" ? `${campo("Parcela", `<select onchange="rrPagamentoAtual.parcela13=this.value; rrAgendar(rrRenderPagamento)"><option value="1"${d.parcela13==="1"?" selected":""}>1ª parcela (até 30/11)</option><option value="2"${d.parcela13==="2"?" selected":""}>2ª parcela (até 20/12)</option></select>`)}${campo("Avos de 13º", inp("avos13","number",'min="1" max="12"'), "Meses trabalhados no ano")}`
     : d.tipo==="outros" ? campo("Descrição do pagamento", inp("descricaoOutro"), "Ex.: Diárias, Comissão, Prêmio") : "";
   document.getElementById("rrConteudo").innerHTML = `${d.impostos?rrHtmlAvisoTabelas():""}
     ${rrHtmlQuem(d, "rrRenderPagamento")}
@@ -91,9 +91,9 @@ function rrRenderPagamento(){
         ${campo("Referência", inp("referencia"), "Ex.: Novembro/2026")}
         ${campo("Data do pagamento", inp("data","date"))}
         ${campo("Forma de pagamento", `<select onchange="rrPagamentoAtual.forma=this.value">${["Dinheiro","PIX","Transferência","Depósito","Cheque"].map(x=>`<option${d.forma===x?" selected":""}>${x}</option>`).join("")}</select>`)}
-        ${campo("Salário (R$)", inp("salario","", `onblur="this.value=formatMoneyInput(this.value)"`))}
+        ${campo("Salário (R$)", inp("salario","", "moeda"))}
         ${extras}
-        ${campo("Calcular INSS e IRRF", `<select onchange="rrPagamentoAtual.impostos=this.value==='1'; rrRenderPagamento()"><option value="0"${d.impostos?"":" selected"}>Não</option><option value="1"${d.impostos?" selected":""}>Sim</option></select>`)}
+        ${campo("Calcular INSS e IRRF", `<select onchange="rrPagamentoAtual.impostos=this.value==='1'; rrAgendar(rrRenderPagamento)"><option value="0"${d.impostos?"":" selected"}>Não</option><option value="1"${d.impostos?" selected":""}>Sim</option></select>`)}
         ${d.impostos?campo("Dependentes para IRRF", inp("dependentes","number",'min="0"')):""}
       </div>
       <button class="btn pri" type="button" style="margin-top:10px" onclick="rrPreencherPagamento()">✨ Preencher sugestão de valores</button></div>
