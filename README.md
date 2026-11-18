@@ -32,6 +32,7 @@ js/15-calculadoras.js      facilitador (cálculos de horas)
 js/16-mensagem-painel.js   mensagem do painel
 js/17-aso-laudos-ferias.js ASOs, laudos SST e férias
 js/18-guias.js             guias e senhas de portais (cofre)
+js/19-salarios.js         histórico de salários do funcionário (salário por competência)
 js/99-iniciar.js           renderAll() e init()
 js/inicio-dp.js            botões da página inicial
 supabase/migrations/       alterações do banco, na ordem em que foram aplicadas
