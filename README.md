@@ -13,6 +13,7 @@ index.html                 telas (HTML) e a ordem de carregamento dos scripts
 css/app.css                estilos do sistema
 css/inicio-dp.css          estilos da página inicial "Plataforma DP"
 js/logo.js                 logo (uma cópia, usada nas telas e no PDF)
+js/00-atualizacao.js     confere se saiu versão nova e recarrega/avisa
 js/00-avisos.js          aviso(), confirmar() e perguntar(): janelas do sistema (no lugar de alert/confirm/prompt)
 js/01-base-inicial.js      base vazia (SEED) e chaves do navegador
 js/02-supabase.js          conexão, versões, trava de uso, anexos
