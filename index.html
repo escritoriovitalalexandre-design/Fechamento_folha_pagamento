@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="versao-sistema" content="399a9e14c9b6">
+<meta name="versao-sistema" content="4c0b8ccd1b26">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Versão fixa do supabase-js (antes "@2" puxava sempre a mais nova). Para atualizar: troque a versão e o integrity. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"
@@ -11,7 +11,7 @@
 <script src="js/00-atualizacao.js?v=60d42f937a"></script>
 <script src="js/logo.js?v=09affd8f40"></script>
 <title>Controle de Fechamento da Folha — v3.4 | Migração cobre acesso específico por empresa | 2026-07-13</title>
-<link rel="stylesheet" href="css/app.css?v=cdf29a02fd">
+<link rel="stylesheet" href="css/app.css?v=a23480d5ca">
 <link rel="stylesheet" href="css/inicio-dp.css?v=3bc2ceea7d">
 </head>
 <body class="dp-home-active">
@@ -19,7 +19,7 @@
 <div class="dp-header"><img class="dp-logo" data-logo alt="Contabilidade Vital"><div class="dp-brand"><h1>PLATAFORMA DP</h1><p>Contabilidade Vital</p></div><span class="dp-area">Departamento Pessoal</span></div>
 <div class="dp-main"><div class="dp-intro"><h2>Ferramentas do Departamento Pessoal</h2><p>Escolha a ferramenta que deseja abrir.</p></div><div class="dp-modules">
 <section class="dp-module dp-available"><div class="dp-module-top"><span class="dp-icon" aria-hidden="true"><svg viewBox="0 0 26 30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="1" width="22" height="28" rx="3"/><path d="M6 8h14M6 15h14M6 22h14"/></svg></span><span class="dp-tag">DISPONÍVEL</span></div><h3>Fechamento da Folha</h3><p>Controle mensal, cadastros,<br>regras e relatórios do DP.</p><a class="dp-button" href="#fechamento" onclick="dpAbrirControle();return false">Abrir ferramenta &nbsp; →</a></section>
-<section class="dp-module"><div class="dp-module-top"><span class="dp-icon" aria-hidden="true"><svg viewBox="0 0 26 30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="1" width="22" height="28" rx="3"/><path d="M6 8h14M6 15h14M6 22h14"/></svg></span><span class="dp-tag">FUTURA FERRAMENTA</span></div><h3>Rescisões e Recibos</h3><p>Espaço reservado para cálculos,<br>documentos e recibos.</p><button class="dp-button" disabled>Em breve</button></section>
+<section class="dp-module dp-available"><div class="dp-module-top"><span class="dp-icon" aria-hidden="true"><svg viewBox="0 0 26 30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="1" width="22" height="28" rx="3"/><path d="M6 8h14M6 15h14M6 22h14"/></svg></span><span class="dp-tag">DISPONÍVEL</span></div><h3>Rescisões e Recibos</h3><p>Rescisão (TRCT), recibo de férias<br>e recibo de pagamento.</p><a class="dp-button" href="#rr" onclick="dpAbrirRescisoes();return false">Abrir ferramenta &nbsp; →</a></section>
 <section class="dp-module"><div class="dp-module-top"><span class="dp-icon" aria-hidden="true"><svg viewBox="0 0 26 30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="1" width="22" height="28" rx="3"/><path d="M6 8h14M6 15h14M6 22h14"/></svg></span><span class="dp-tag">FUTURA FERRAMENTA</span></div><h3>Contratos e Declarações</h3><p>Espaço reservado para modelos<br>e emissão de documentos.</p><button class="dp-button" disabled>Em breve</button></section>
 </div><div class="dp-note"><strong>Uma entrada para os módulos do DP</strong><p>O controle de Fechamento da Folha abre a partir desta página inicial.</p></div></div><div class="dp-footer">CONTABILIDADE VITAL</div>
 </div>
@@ -65,6 +65,7 @@
 <button data-sec="facilitador">🧰 Facilitador</button>
 <button data-sec="backup">💾 Backup</button>
 <button data-sec="laudos">📑 Laudos SST</button>
+<button data-sec="rr">📄 Rescisões e Recibos</button>
 </nav>
 </aside>
 <main>
@@ -677,6 +678,10 @@
 </section>
 
 <section id="backup" class="section"><div class="card"><h3 style="color:var(--pri);margin-top:0">Backup</h3><p class="muted">Os dados ficam salvos no Supabase, e o sistema guarda versões automáticas (veja abaixo). Baixar um backup em arquivo continua sendo uma boa cópia extra.</p><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn pri" onclick="downloadBackup()">⬇️ Baixar backup</button><button class="btn out" onclick="document.getElementById('backupFile').click()">⬆️ Restaurar backup</button><button class="btn red" onclick="resetAppConfirm()">⚠️ Resetar dados locais</button></div><p id="ultimoBackupInfo" class="muted" style="margin-top:10px;font-size:13px"></p><input id="backupFile" type="file" accept=".json" class="hidden" onchange="restoreBackup(event)"><div style="margin-top:16px"><button class="btn small out" onclick="toggleDadosTecnicos()" style="font-size:12px">🔍 Ver dados técnicos</button></div><div id="dadosTecnicosArea" style="display:none;margin-top:10px"><p class="muted" style="font-size:12px">Conteúdo atual dos dados salvos no navegador (uso técnico).</p><textarea id="backupTxt" readonly style="margin-top:6px;height:260px;font-size:11px"></textarea></div></div><div class="card"><h3 style="color:var(--pri);margin-top:0">Versões salvas automaticamente</h3><p class="muted">A cada gravação, o Supabase guarda a versão anterior (no máximo uma a cada 10 minutos). Ficam todas as versões dos últimos 7 dias e, depois, uma por dia até 90 dias. Para voltar a uma versão: baixe o arquivo dela e use <b>⬆️ Restaurar backup</b> acima.</p><button class="btn out" onclick="carregarVersoes()">🕘 Ver versões</button><div id="versoesInfo" class="muted" style="margin-top:8px;font-size:13px"></div><div class="table-wrap" style="margin-top:8px"><table id="tabVersoes"></table></div></div><div class="card"><h3 style="color:var(--pri);margin-top:0">Migrar anexos antigos para o Storage</h3><p class="muted">Documentos anexados antes da atualização de anexos (v3.2) ficaram gravados dentro dos dados do sistema, deixando tudo mais pesado. Use o botão abaixo para reenviá-los ao Supabase Storage — nada é apagado, só o armazenamento é trocado.</p><button class="btn pri" onclick="migrarAnexosAntigos()">🔄 Migrar anexos antigos</button><p id="migracaoAnexosInfo" class="muted" style="margin-top:10px;font-size:13px"></p></div></section>
+<section id="rr" class="section">
+<div class="card rr-cab"><div class="rr-abas"><button type="button" class="rr-aba ativa" data-aba="rescisao" onclick="rrMostrar('rescisao')">📄 Rescisão</button><button type="button" class="rr-aba" data-aba="ferias" onclick="rrMostrar('ferias')">🌴 Recibo de férias</button><button type="button" class="rr-aba" data-aba="pagamento" onclick="rrMostrar('pagamento')">🧾 Recibo de pagamento</button><button type="button" class="rr-aba" data-aba="tabelas" onclick="rrMostrar('tabelas')">⚙️ Tabelas INSS/IRRF</button></div></div>
+<div id="rrConteudo"></div>
+</section>
 </main></div>
 
 <div id="modalSindicato" class="overlay-sind">
@@ -838,7 +843,7 @@
 <script src="js/05-fechamento-eventos.js?v=aa1b716473"></script>
 <script src="js/06-inativacao-cadastros.js?v=f8dbea1c9f"></script>
 <script src="js/07-login.js?v=7ae762f7aa"></script>
-<script src="js/08-painel-fechamento.js?v=bf3bc5412f"></script>
+<script src="js/08-painel-fechamento.js?v=8f9c916d2f"></script>
 <script src="js/09-relatorio-lancamento.js?v=043a4ec9b4"></script>
 <script src="js/10-empresas-funcionarios.js?v=2ae0fd6fff"></script>
 <script src="js/11-eventos-sindicatos.js?v=baf94f9c17"></script>
@@ -851,6 +856,10 @@
 <script src="js/18-guias.js?v=71bee3ec91"></script>
 <script src="js/19-salarios.js?v=b9dc3df2e2"></script>
 <script src="js/20-painel-database.js?v=543dec57a5"></script>
+<script src="js/21-rr-base.js?v=f7662c9363"></script>
+<script src="js/22-rr-rescisao.js?v=5573fcfc0f"></script>
+<script src="js/23-rr-ferias.js?v=10c4e10432"></script>
+<script src="js/24-rr-pagamento.js?v=23f72d66a8"></script>
 <script src="js/99-iniciar.js?v=0af61da96a"></script>
 <script src="js/inicio-dp.js?v=6ff2d33e07"></script>
 </body>
