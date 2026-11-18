@@ -400,7 +400,7 @@ function renderSindicatos(){
   tabSindicatos.innerHTML='<thead><tr><th>Sindicato</th><th>Contato</th><th>E-mail</th><th>Data-base</th><th>Benefício</th><th>Anexos</th><th>Resumo</th><th>Ação</th></tr></thead><tbody>'+lista.map(s=>{const i=state.sindicatos.indexOf(s);const nVinc=empresasVinculadasAoSindicato(s.nome).length;const btnExcluir=`<button class="btn small red" onclick="excluirSindicato(${i})" title="${nVinc?('Excluir — atenção: possui '+nVinc+' empresa(s) vinculada(s)'):'Excluir sindicato'}">Excluir</button>${nVinc?` <span class="muted" style="font-size:11px" title="Empresas vinculadas">(${nVinc})</span>`:''}`;return `<tr><td><button class="link-btn" onclick="abrirSindicato('${esc(s.nome).replaceAll("'","&#39;")}')">${esc(s.nome)}</button></td><td>${esc(s.contatoNome||"")}<br><span class="muted">${esc(s.contato||"")}</span></td><td>${esc(s.email||"")}</td><td>${esc(s.dataBase||"")}</td><td>${esc(s.beneficio||"")}</td><td>${(s.anexos||[]).length}</td><td>${s.resumoConvencao?'<span class="badge ok">Com resumo</span>':'<span class="badge pend">Sem resumo</span>'}</td><td style="white-space:nowrap"><button class="btn small out" onclick="abrirEditarSindicato(${i})">Editar</button> ${btnExcluir}</td></tr>`}).join("")+'</tbody>'
 }
 function abrirSindicato(nome){
-  const s=(state.sindicatos||[]).find(x=>x.nome===nome) || {nome}
+  const s=(state.sindicatos||[]).find(x=>x.nome===nome) || (state.sindicatos||[]).find(x=>String(x.nome||"").trim()===String(nome||"").trim()) || {nome}
   modalSindTitulo.textContent=s.nome||"Sindicato"
   modalSindConteudo.innerHTML=`<div class="sind-grid">
     <div class="sind-info"><b>Razão Social</b>${esc(s.razao||"Não informado")}</div>

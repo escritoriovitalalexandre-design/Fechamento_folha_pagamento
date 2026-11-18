@@ -135,15 +135,23 @@ function renderAlertas(){
   const pendentes = visiveis.filter(x=>x.g.status!=="Em dia");
   const emDia = visiveis.filter(x=>x.g.status==="Em dia");
   const mostrarEmDiaAberto = _filtroAlerta==="emdia" || !!_filtroMesDB;
-  const titulo = `<div class="db-titulo">Para ligar <span class="muted">· vencidas e do mês, a mais atrasada primeiro</span></div>`;
+  const titulo = _filtroMesDB
+    ? `<div class="db-titulo">Data-base em ${_MESES_CURTOS[_filtroMesDB-1]} <span class="muted">· ${visiveis.length} ${visiveis.length===1?"sindicato":"sindicatos"}</span> <button class="btn small out" onclick="filtrarMesDataBase(null)">✕ Ver todos os meses</button></div>`
+    : `<div class="db-titulo">Para ligar <span class="muted">· vencidas e do mês, a mais atrasada primeiro</span></div>`;
   const corpoPendentes = pendentes.length ? pendentes.map(x=>_htmlGrupo(x.g,x.i)).join("") : (_filtroAlerta==="emdia" ? "" : `<div class="alert"><strong>Nenhum sindicato vencido ou aguardando${_filtroMesDB||_filtroAlerta!=="todos"?" com este filtro":""}.</strong></div>`);
   const corpoEmDia = emDia.length ? `<details class="db-em-dia"${mostrarEmDiaAberto?" open":""}><summary>Em dia (${emDia.length} ${emDia.length===1?"sindicato":"sindicatos"})</summary>${emDia.map(x=>_htmlGrupo(x.g,x.i)).join("")}</details>` : "";
 
   box.innerHTML = resumo + linhaAno + (_filtroAlerta==="emdia" ? "" : titulo + corpoPendentes) + corpoEmDia;
 }
 
+// Clicar num mês mostra TODOS os sindicatos daquele mês (vencidos, aguardando e em dia).
+// Antes, o filtro de status ligado (ex.: "Vencidas") somava com o mês e a lista podia ficar vazia.
 function filtrarMesDataBase(n){
   _filtroMesDB = (_filtroMesDB===n) ? null : n;
+  if(_filtroMesDB){
+    _filtroAlerta = "todos";
+    ["todos","emdia","aguardando","vencido"].forEach(k=>{const b=document.getElementById("filtroAlerta_"+k); if(b)b.className=k==="todos"?"btn small pri":"btn small out"});
+  }
   renderAlertas();
 }
 

@@ -610,6 +610,7 @@ function alternarStatusDB(empCod){
 let _filtroAlerta="todos"
 function setFiltroAlerta(f){
   _filtroAlerta=f
+  if(typeof _filtroMesDB!=="undefined")_filtroMesDB=null // status e mês não se somam
   ;["todos","emdia","aguardando","vencido"].forEach(k=>{
     const btn=document.getElementById("filtroAlerta_"+k)
     if(btn)btn.className=k===f?"btn small pri":"btn small out"
