@@ -56,6 +56,7 @@ function limparFuncionarioForm(){
   if(typeof funcionarioFormModo!=="undefined")funcionarioFormModo.textContent="Novo cadastro"
   if(typeof funcionarioFormCard!=="undefined")funcionarioFormCard.classList.remove("editing")
   funCodCad.value=funNomeCad.value=funFuncaoCad.value=funSalCad.value=funObsCad.value=funAutoQtd.value=""
+  atualizarCampoSalario("funSalCad",null)
   funAutoEvento.value=""; if(document.getElementById("funAutoInicio"))funAutoInicio.value=""; if(document.getElementById("funAutoFim"))funAutoFim.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""; if(document.getElementById("funStatusCad"))funStatusCad.value="Ativo"
   funAutoTemp=[]; funEventoTemp=[]; funEventoEditIndex=null; funAutoEditIndex=null; renderAutoTemp()
 }
@@ -65,6 +66,7 @@ async function cancelarFuncionarioCadastro(){
   if(typeof funcionarioFormModo!=="undefined")funcionarioFormModo.textContent="Novo cadastro"
   if(typeof funcionarioFormCard!=="undefined")funcionarioFormCard.classList.remove("editing")
   funCodCad.value=funNomeCad.value=funFuncaoCad.value=funSalCad.value=funObsCad.value=funAutoQtd.value=""
+  atualizarCampoSalario("funSalCad",null)
   funAutoEvento.value=""; if(document.getElementById("funAutoInicio"))funAutoInicio.value=""; if(document.getElementById("funAutoFim"))funAutoFim.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""; funEventoInicio.value=""; funEventoFim.value=""
   funAutoTemp=[]; funEventoTemp=[]; funEventoEditIndex=null; funAutoEditIndex=null; renderAutoTemp()
 }
@@ -302,7 +304,7 @@ async function salvarFuncionarioCadastro(){
   const novo=!f
   if(!await confirmar((novo?"Cadastrar":"Salvar alterações deste")+" funcionário?"))return
   if(!f){f={codigo:cod,nome:"",funcao:"",salario:"",statusDetectado:"Ativo",observacoes:[],eventos:[],autoEventos:[]}; emp.funcionarios.push(f)}
-  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.admissao=(document.getElementById("funAdmCad")?.value||""); f.salario=funSalCad.value.trim(); if(!await aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
+  funSalCad.value=formatMoneyInput(funSalCad.value); f.nome=funNomeCad.value.trim(); f.funcao=funFuncaoCad.value.trim(); f.admissao=(document.getElementById("funAdmCad")?.value||""); ajustarSalarioAoSalvarCadastro(f,funSalCad.value); if(!await aplicarStatusFuncionarioInativo(f,funStatusCad.value))return false
   f.observacoes=funObsCad.value.trim()?[funObsCad.value.trim()]:[]
   f.autoEventos=clone(funAutoTemp)
   f.eventos=clone(funEventoTemp)
@@ -318,6 +320,7 @@ async function salvarFuncionarioCadastro(){
   normalizarOrdemEventosFechamento(fe.funcionarios[chave])
 
   funCodCad.value=funNomeCad.value=funFuncaoCad.value=funSalCad.value=funObsCad.value=funAutoQtd.value=""
+  atualizarCampoSalario("funSalCad",null)
   funAutoEvento.value=""; if(document.getElementById("funAutoInicio"))funAutoInicio.value=""; if(document.getElementById("funAutoFim"))funAutoFim.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""
   funcionarioEditando=null
   if(typeof funcionarioFormModo!=="undefined")funcionarioFormModo.textContent="Novo cadastro"
@@ -330,7 +333,7 @@ function carregarFuncionarioCadastro(empCod,funCod){
   const f=emp?.funcionarios.find(x=>x.codigo===funCod)
   if(!f)return
   // Preenche os campos originais (usados por salvarFuncionarioCadastro)
-  funEmpCad.value=empCod; atualizarVisibilidadeCadastroFuncionario(); funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; if(document.getElementById("funAdmCad"))funAdmCad.value=f.admissao||""; funSalCad.value=f.salario||""; funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
+  funEmpCad.value=empCod; atualizarVisibilidadeCadastroFuncionario(); funCodCad.value=f.codigo; funNomeCad.value=f.nome||""; funFuncaoCad.value=f.funcao||""; if(document.getElementById("funAdmCad"))funAdmCad.value=f.admissao||""; funSalCad.value=f.salario||""; atualizarCampoSalario("funSalCad",f); funStatusCad.value=f.statusDetectado||"Ativo"; funObsCad.value=(f.observacoes||[]).join(" | ")
   funAutoTemp=clone(f.autoEventos||[]).map(a=>({...a,inicio:a.inicio||"",fim:a.fim||""}))
   funEventoTemp=clone(f.eventos||[])
   funAutoEvento.value=""; funAutoQtd.value=""; funEventoPadrao.value=""; funEventoValor.value=""; funEventoObs.value=""; funEventoInicio.value=""; funEventoFim.value=""
@@ -363,7 +366,7 @@ function abrirModalFuncionario(emp,f){
 <div class="row" style="grid-template-columns:1fr 135px 140px 120px;gap:10px;margin-top:8px">
   <div><label>Função</label><input id="mfFuncao" value="${esc(f.funcao||"")}"></div>
   <div><label>Data admissão</label><input id="mfAdm" type="date" value="${esc(f.admissao||"")}"></div>
-  <div><label>Salário</label><input id="mfSal" value="${esc(f.salario||"")}" onblur="this.value=formatMoneyInput(this.value)"></div>
+  <div><label>Salário</label><div class="campo-com-botao"><input id="mfSal" data-funcionario="${esc(String(emp?.codigo??"")+"|"+String(f.codigo??""))}" value="${esc(f.salario||"")}" onblur="this.value=formatMoneyInput(this.value)"><button type="button" class="btn small out" title="Histórico de salários / novo salário" onclick="abrirHistoricoSalarioModal()">📈</button></div></div>
   <div><label>Status</label><select id="mfStatus">${statusOpts}</select></div>
 </div>
 <div style="margin-top:8px"><label>Observações</label><input id="mfObs" value="${esc((f.observacoes||[]).join(" | "))}" placeholder="Observações fixas do funcionário"></div>
@@ -394,6 +397,7 @@ function abrirModalFuncionario(emp,f){
   <button class="btn pri" onclick="mFunSalvar()">💾 Salvar funcionário</button>
   <button class="btn out" onclick="fecharModalFuncionario()">Cancelar</button>
 </div>`
+  atualizarCampoSalario("mfSal",f)
   mFunRenderAuto()
   mFunRenderPadrao()
   modal.classList.add("open")

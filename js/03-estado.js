@@ -127,6 +127,7 @@ function normalizarState(s){
     const permitidos=(Array.isArray(emp.eventosPermitidos)?emp.eventosPermitidos:[]).filter(l=>parseEventoLabel(l))
     emp.eventosPermitidos=permitidos.sort((a,b)=>Number((a.match(/^\d+/)||[999999])[0])-Number((b.match(/^\d+/)||[999999])[0]) || a.localeCompare(b))
     ;(emp.funcionarios||[]).forEach(fun=>{
+      normalizarSalariosFuncionario(fun)
       ;(fun.eventos||[]).forEach(ev=>{
         const parsed=parseEventoLabel(ev.desc)
         if(parsed&&!cods.has(parsed.codigo)){

@@ -306,7 +306,7 @@
     <div class="fun-nome-wide"><label>Nome</label><input id="funNomeCad" placeholder="Nome completo do funcionário"></div>
     <div class="fun-funcao-small"><label>Função</label><input id="funFuncaoCad" placeholder="Função"></div>
     <div><label>Data admissão</label><input id="funAdmCad" type="date"></div>
-    <div><label>Salário</label><input id="funSalCad" placeholder="2.500,00" onblur="this.value=formatMoneyInput(this.value)"></div>
+    <div><label>Salário</label><div class="campo-com-botao"><input id="funSalCad" placeholder="2.500,00" onblur="this.value=formatMoneyInput(this.value)"><button type="button" class="btn small out" title="Histórico de salários / novo salário" onclick="abrirHistoricoSalarioCadastro()">📈</button></div></div>
     <div class="fun-status-small"><label>Status</label><select id="funStatusCad"><option>Ativo</option><option>Admitido</option><option>Rescisão</option><option>Férias</option><option>Afastado</option><option>Licença maternidade</option><option>Inativo</option></select></div>
     <div><label>Evento automático</label><select id="funAutoEvento"></select></div>
     <div class="fun-qtd-small"><label>Qtd. por dia útil</label><input id="funAutoQtd" placeholder="1:00"></div>
@@ -847,6 +847,7 @@
 <script src="js/16-mensagem-painel.js"></script>
 <script src="js/17-aso-laudos-ferias.js"></script>
 <script src="js/18-guias.js"></script>
+<script src="js/19-salarios.js"></script>
 <script src="js/99-iniciar.js"></script>
 <script src="js/inicio-dp.js"></script>
 </body>
