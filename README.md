@@ -35,6 +35,10 @@ js/17-aso-laudos-ferias.js ASOs, laudos SST e férias
 js/18-guias.js             guias e senhas de portais (cofre)
 js/19-salarios.js         histórico de salários do funcionário (salário por competência)
 js/20-painel-database.js  painel de data-base agrupado por sindicato + registro de contatos
+js/21-rr-base.js          Rescisões e Recibos: dados, tabelas INSS/IRRF, cadastro complementar e avulsos
+js/22-rr-rescisao.js      Rescisão: cálculo (CLT), verbas, TRCT e layout moderno
+js/23-rr-ferias.js        Recibo de férias (aviso + recibo)
+js/24-rr-pagamento.js     Recibo de pagamento (2 vias A4) e aba de tabelas
 js/99-iniciar.js           renderAll() e init()
 js/inicio-dp.js            botões da página inicial
 supabase/migrations/       alterações do banco, na ordem em que foram aplicadas
