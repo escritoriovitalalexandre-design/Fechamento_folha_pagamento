@@ -51,3 +51,9 @@ python -m http.server 8765
 ```
 
 Lembre que ele usa o Supabase de verdade: o que for salvo vale para todos.
+
+## Antes de publicar uma mudança em css/ ou js/
+
+Rode `python ferramentas/atualizar_versoes.py`. Ele atualiza o `?v=` de cada
+arquivo no `index.html`, para o navegador baixar a versão nova em vez de usar a
+guardada no cache (o GitHub Pages deixa o navegador guardar por até 10 minutos).
