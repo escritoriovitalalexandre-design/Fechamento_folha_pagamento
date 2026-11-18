@@ -68,54 +68,7 @@ function statusDataBasePainel(status,dataBase,anoEmDia){
   if(mes<atual&&(status==="Aguardando"||status==="Vencida"))return "Vencida"
   return status
 }
-function renderAlertas(){
-  const verTodas=document.getElementById("verTodasDatabases")?.checked
-  const grupos=[]
-  empSelecionadas().forEach(e=>{
-    const itens=[{principal:true,nome:e.sindicato||"",dataBase:dataBaseReferencia(e),status:statusDB(e),dissidio:e.dissidio||"",idx:-1}]
-      .concat(sindicatoAdicionalDetalhesNormalizados(e).map((x,idx)=>({principal:false,nome:x.nome,dataBase:x.dataBase,status:statusDBSindicatoAdicional(x),dissidio:x.dissidio||"",idx})))
-    const linhas=[]
-    itens.forEach(it=>{
-      const cadastro=it.principal?e:sindicatoAdicionalDetalhesNormalizados(e)[it.idx]
-      const st=statusDataBasePainel(it.status,it.dataBase,cadastro?.dataBaseEmDiaAno)
-      const noMes=dataBaseNoMesValor(it.dataBase)
-      let tipo=""
-      let mostrar=false
-      if(st==="Vencida"){
-        tipo=it.principal?"Data-base vencida":"Data-base vencida · Sindicato adicional"
-        mostrar=true
-      }else if(st==="Aguardando"){
-        tipo=it.principal?"Data-base aguardando":"Data-base aguardando · Sindicato adicional"
-        mostrar=true
-      }else if(st==="Em dia"){
-        tipo=it.principal?"Data-base em dia":"Data-base em dia · Sindicato adicional"
-        mostrar=verTodas||noMes||_filtroAlerta==="emdia"
-      }
-      if(mostrar){
-        linhas.push({tipo,emp:`${e.codigo} - ${e.nome}`,empCod:e.codigo,sind:it.nome||"",status:st,noMes,det:`${it.dataBase||"Sem data-base"} · ${it.nome||"Sem sindicato"} · ${st}`,dissidio:it.dissidio||"",principal:it.principal,idx:it.idx})
-      }
-    })
-    let filtradas=linhas
-    if(_filtroAlerta==="emdia")filtradas=linhas.filter(x=>x.status==="Em dia")
-    else if(_filtroAlerta==="aguardando")filtradas=linhas.filter(x=>x.status==="Aguardando")
-    else if(_filtroAlerta==="vencido")filtradas=linhas.filter(x=>x.status==="Vencida")
-    if(filtradas.length)grupos.push({emp:`${e.codigo} - ${e.nome}`,linhas:filtradas})
-  })
-
-  alertas.innerHTML=grupos.length?grupos.map(g=>{
-    const pior=g.linhas.some(x=>x.status==="Vencida")?"Vencida":(g.linhas.some(x=>x.status==="Aguardando")?"Aguardando":"Em dia")
-    const titulo=pior==="Vencida"?"Data-base vencida":(pior==="Aguardando"?"Data-base aguardando":"Data-base em dia")
-    const rows=g.linhas.map(x=>`<div class="alert-sind-row">
-      <div class="alert-sind-top">
-        <span class="badge ${dbClass(x.status)}" style="cursor:pointer" title="Clique para alternar o status" onclick="${x.principal?`confirmarAlternarStatusDB('${esc(x.empCod)}','${esc(x.status)}','${esc(x.emp)}')`:`confirmarAlternarStatusDBAdicional('${esc(x.empCod)}',${x.idx},'${esc(x.status)}','${esc(x.emp)}')`}">${esc(x.status)}${x.principal?"":" · adicional"}</span>
-        <button class="btn small out" style="font-size:11px;padding:2px 8px" onclick="abrirSindicatoPainel('${esc(x.sind)}')">Ver sindicato →</button>
-      </div>
-      <div class="alert-sind-info">${esc(x.det)}</div>
-      ${x.dissidio?`<div class="alert-sind-dissidio">${esc(x.dissidio)}</div>`:""}
-    </div>`).join("")
-    return `<div class="alert"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="badge ${dbClass(pior)}">${esc(titulo)}</span></div><div><strong>${esc(g.emp)}</strong></div><div class="alert-sind-list">${rows}</div></div>`
-  }).join(""):'<div class="alert"><strong>Nenhuma data-base para exibir'+((_filtroAlerta!=="todos")?" com este filtro":"")+'.</strong><div class="muted">Em dia: convenção regularizada. Aguardando: data-base do mês. Vencida: data-base passada ainda pendente. Marque "Ver todas as datas-base" para ampliar a lista.</div></div>'
-}
+// renderAlertas() agora fica em js/20-painel-database.js (painel agrupado por sindicato).
 function renderPainelDetalhes(){}
 async function salvarEventoLinha(e,f,i,row){
   const item=find(e,f)
