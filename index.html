@@ -9,7 +9,7 @@
   crossorigin="anonymous"></script>
 <script src="js/logo.js?v=09affd8f40"></script>
 <title>Controle de Fechamento da Folha — v3.4 | Migração cobre acesso específico por empresa | 2026-07-13</title>
-<link rel="stylesheet" href="css/app.css?v=6e32c1ca54">
+<link rel="stylesheet" href="css/app.css?v=3f497f0972">
 <link rel="stylesheet" href="css/inicio-dp.css?v=3bc2ceea7d">
 </head>
 <body class="dp-home-active">
@@ -81,7 +81,7 @@
 </div>
 <p class="muted">Esses dados ficam gravados por competência e podem alimentar eventos automáticos dos funcionários.</p>
 </div>
-<div class="card"><h3 style="color:var(--pri);margin-top:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">Data-base por status <span style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:900">⚠️ CUIDADO COM PRAZO CARTA OPOSIÇÃO DO SINDICATO</span></h3><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn small pri" id="filtroAlerta_todos" onclick="setFiltroAlerta('todos')">Todos</button><button class="btn small out" id="filtroAlerta_emdia" onclick="setFiltroAlerta('emdia')">Em dia</button><button class="btn small out" id="filtroAlerta_aguardando" onclick="setFiltroAlerta('aguardando')">Aguardando</button><button class="btn small out" id="filtroAlerta_vencido" onclick="setFiltroAlerta('vencido')">Vencido</button><div style="width:1px;height:18px;background:var(--line);margin:0 4px"></div><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;margin:0"><input type="checkbox" id="verTodasDatabases" style="width:auto" onchange="renderAlertas()"> Ver todas as datas-base</label></div><div id="alertas" class="alerts"></div></div>
+<div class="card"><h3 style="color:var(--pri);margin-top:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">Data-base dos sindicatos <span style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:900">⚠️ CUIDADO COM PRAZO CARTA OPOSIÇÃO DO SINDICATO</span></h3><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><button class="btn small pri" id="filtroAlerta_todos" onclick="setFiltroAlerta('todos')">Todos</button><button class="btn small out" id="filtroAlerta_vencido" onclick="setFiltroAlerta('vencido')">Vencidas</button><button class="btn small out" id="filtroAlerta_aguardando" onclick="setFiltroAlerta('aguardando')">Aguardando / do mês</button><button class="btn small out" id="filtroAlerta_emdia" onclick="setFiltroAlerta('emdia')">Em dia</button></div><div id="alertas"></div></div>
 <div class="card" style="padding:0;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg2);border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">💬</span><h3 style="color:var(--pri);margin:0">Painel de Mensagem</h3></div><button class="btn small out" style="font-size:12px" onclick="painelMsgEditar()">✏️ Editar</button></div><div id="painelMsgView" style="padding:16px 18px;font-size:14px;line-height:1.7;color:var(--ink);white-space:pre-wrap"></div><div id="painelMsgEdit" style="display:none;padding:16px 18px"><textarea id="painelMsgTxt" style="width:100%;min-height:130px;font-size:14px;line-height:1.7;resize:vertical;box-sizing:border-box"></textarea><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn small out" onclick="painelMsgCancelar()">Cancelar</button><button class="btn small pri" onclick="painelMsgSalvar()">Salvar</button></div></div></div>
 </section>
 <section id="fechamento" class="section">
@@ -836,7 +836,7 @@
 <script src="js/05-fechamento-eventos.js?v=aa1b716473"></script>
 <script src="js/06-inativacao-cadastros.js?v=f8dbea1c9f"></script>
 <script src="js/07-login.js?v=7ae762f7aa"></script>
-<script src="js/08-painel-fechamento.js?v=c6a628cbca"></script>
+<script src="js/08-painel-fechamento.js?v=bf3bc5412f"></script>
 <script src="js/09-relatorio-lancamento.js?v=043a4ec9b4"></script>
 <script src="js/10-empresas-funcionarios.js?v=2ae0fd6fff"></script>
 <script src="js/11-eventos-sindicatos.js?v=5f0d174ec2"></script>
@@ -848,6 +848,7 @@
 <script src="js/17-aso-laudos-ferias.js?v=fbeaf6e06d"></script>
 <script src="js/18-guias.js?v=71bee3ec91"></script>
 <script src="js/19-salarios.js?v=b9dc3df2e2"></script>
+<script src="js/20-painel-database.js?v=36816e2cff"></script>
 <script src="js/99-iniciar.js?v=0af61da96a"></script>
 <script src="js/inicio-dp.js?v=6ff2d33e07"></script>
 </body>
