@@ -244,3 +244,8 @@ tr.salario-atual td{background:#f0fdf4}
 .db-em-dia{margin-top:6px}
 .db-em-dia>summary{cursor:pointer;color:var(--muted);font-weight:700;padding:6px 0}
 @media(max-width:900px){.db-resumo{grid-template-columns:1fr 1fr}.db-meses{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.db-mes-partes{display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.db-mes-n{font-size:10.5px;font-weight:700;line-height:1.2}
+.db-mes-n-red{color:var(--red)}
+.db-mes-n-pend{color:var(--amber)}
+.db-mes-n-ok{color:var(--green)}

@@ -115,10 +115,16 @@ function renderAlertas(){
   const meses = _MESES_CURTOS.map((m,k)=>{
     const n = k+1;
     const doMes = lista.filter(g=>g.mes===n);
-    const cls = !doMes.length ? "vazio" : doMes.some(g=>g.status==="Vencida") ? "red" : doMes.some(g=>g.status==="Aguardando") ? "pend" : "ok";
-    return `<button type="button" class="db-mes db-mes-${cls}${n===mesAtual?" db-mes-atual":""}${_filtroMesDB===n?" db-mes-sel":""}" title="${doMes.map(g=>esc(g.nome)).join("\n")||"Nenhum sindicato"}" onclick="filtrarMesDataBase(${n})">${m}<br><b>${doMes.length||"–"}</b></button>`;
+    const nVenc = doMes.filter(g=>g.status==="Vencida").length;
+    const nAgu = doMes.filter(g=>g.status==="Aguardando").length;
+    const nOk = doMes.length - nVenc - nAgu;
+    const cls = !doMes.length ? "vazio" : nVenc ? "red" : nAgu ? "pend" : "ok";
+    // O número grande é o total de sindicatos com data-base no mês; embaixo, quantos estão em cada situação.
+    const partes = [nVenc?`<span class="db-mes-n db-mes-n-red">${nVenc} venc.</span>`:"", nAgu?`<span class="db-mes-n db-mes-n-pend">${nAgu} aguard.</span>`:"", (nOk && (nVenc||nAgu))?`<span class="db-mes-n db-mes-n-ok">${nOk} em dia</span>`:""].filter(Boolean).join("");
+    const dica = doMes.map(g=>`${g.nome} — ${g.status}`).join("\n") || "Nenhum sindicato";
+    return `<button type="button" class="db-mes db-mes-${cls}${n===mesAtual?" db-mes-atual":""}${_filtroMesDB===n?" db-mes-sel":""}" title="${esc(dica)}" onclick="filtrarMesDataBase(${n})">${m}<br><b>${doMes.length||"–"}</b>${partes?`<div class="db-mes-partes">${partes}</div>`:""}</button>`;
   }).join("");
-  const linhaAno = `<div class="muted" style="font-size:12px;margin:12px 0 4px">Data-base no ano — clique no mês para filtrar${_filtroMesDB?` · <button class="link-btn" onclick="filtrarMesDataBase(null)">limpar filtro de mês</button>`:""}</div><div class="db-meses">${meses}</div>`;
+  const linhaAno = `<div class="muted" style="font-size:12px;margin:12px 0 4px">Data-base no ano: quantos sindicatos têm data-base em cada mês e quantos estão vencidos — clique no mês para ver a lista${_filtroMesDB?` · <button class="link-btn" onclick="filtrarMesDataBase(null)">limpar filtro de mês</button>`:""}</div><div class="db-meses">${meses}</div>`;
 
   let visiveis = lista.map((g,i)=>({g,i}));
   if(_filtroMesDB) visiveis = visiveis.filter(x=>x.g.mes===_filtroMesDB);
