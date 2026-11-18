@@ -75,7 +75,7 @@ function rrRenderFerias(){
   if(d.empCod && d.ref && !d.admissao){ const f = rrFuncionario(d.empCod, d.ref); if(f){ d.admissao = f.admissao||""; if(!d.salario) d.salario = rrBRL(f.salario); } }
   const b = rrRecalcularFerias(d, false);
   const campo = (rot, html, dica) => `<div><label>${rot}</label>${html}${dica?`<div class="muted" style="font-size:11px;margin-top:2px">${dica}</div>`:""}</div>`;
-  const inp = (k, tipo, extra) => `<input ${tipo?`type="${tipo}"`:""} value="${esc(d[k]??"")}" onchange="rrFeriasAtual.${k}=this.value; rrRenderFerias()" ${extra||""}>`;
+  const inp = (k, tipo, extra) => rrInput("rrFeriasAtual", d, k, tipo, extra==="moeda"?"moeda":"", extra==="moeda"?"":extra, "rrRenderFerias");
   const resumo = b.erros.length ? `<div class="rr-alerta">${b.erros.map(esc).join("<br>")}</div>` : `<div class="rr-chips">
       <span>Gozo: <b>${rrDataBR(d.inicio)} a ${rrDataBR(b.fim)}</b></span><span>Retorno: <b>${rrDataBR(b.retorno)}</b></span>
       ${b.paInicio?`<span>Período aquisitivo: <b>${rrDataBR(b.paInicio)} a ${rrDataBR(b.paFim)}</b></span>`:""}
@@ -86,19 +86,19 @@ function rrRenderFerias(){
       <div class="rr-grid">
         ${campo("Admissão", inp("admissao","date"))}
         ${campo("Início das férias", inp("inicio","date"))}
-        ${campo("Dias de férias (gozo)", `<select onchange="rrFeriasAtual.diasGozo=this.value; rrRenderFerias()">${[30,20,15,14,10,5].map(n=>`<option${Number(d.diasGozo)===n?" selected":""}>${n}</option>`).join("")}</select>`, "Fracionamento: um período de 14+ dias e os demais de 5+ (art. 134)")}
-        ${campo("Vender dias (abono pecuniário)", `<select onchange="rrFeriasAtual.diasAbono=this.value; rrRenderFerias()">${[0,5,10].map(n=>`<option value="${n}"${Number(d.diasAbono)===n?" selected":""}>${n?n+" dias":"Não vender"}</option>`).join("")}</select>`, "Máximo de 10 dias")}
-        ${campo("Salário (R$)", inp("salario","", `onblur="this.value=formatMoneyInput(this.value)"`))}
-        ${campo("Média de variáveis (R$)", inp("media","", `onblur="this.value=formatMoneyInput(this.value)"`), "Horas extras, comissões etc. — opcional")}
+        ${campo("Dias de férias (gozo)", `<select onchange="rrFeriasAtual.diasGozo=this.value; rrAgendar(rrRenderFerias)">${[30,20,15,14,10,5].map(n=>`<option${Number(d.diasGozo)===n?" selected":""}>${n}</option>`).join("")}</select>`, "Fracionamento: um período de 14+ dias e os demais de 5+ (art. 134)")}
+        ${campo("Vender dias (abono pecuniário)", `<select onchange="rrFeriasAtual.diasAbono=this.value; rrAgendar(rrRenderFerias)">${[0,5,10].map(n=>`<option value="${n}"${Number(d.diasAbono)===n?" selected":""}>${n?n+" dias":"Não vender"}</option>`).join("")}</select>`, "Máximo de 10 dias")}
+        ${campo("Salário (R$)", inp("salario","", "moeda"))}
+        ${campo("Média de variáveis (R$)", inp("media","", "moeda"), "Horas extras, comissões etc. — opcional")}
         ${campo("Início do período aquisitivo", inp("paInicio","date"), "Em branco = calcula pela admissão")}
         ${campo("Fim do período aquisitivo", inp("paFim","date"))}
         ${campo("Data do pagamento", inp("dataPagamento","date"), "Em branco = 2 dias antes do início")}
         ${campo("Data do aviso de férias", inp("dataAviso","date"), "Em branco = 30 dias antes do início")}
         ${campo("Dependentes para IRRF", inp("dependentes","number",'min="0"'))}
-        ${campo("Adiantar 1ª parcela do 13º", `<select onchange="rrFeriasAtual.adiantar13=this.value==='1'; rrRenderFerias()"><option value="0"${d.adiantar13?"":" selected"}>Não</option><option value="1"${d.adiantar13?" selected":""}>Sim</option></select>`)}
+        ${campo("Adiantar 1ª parcela do 13º", `<select onchange="rrFeriasAtual.adiantar13=this.value==='1'; rrAgendar(rrRenderFerias)"><option value="0"${d.adiantar13?"":" selected"}>Não</option><option value="1"${d.adiantar13?" selected":""}>Sim</option></select>`)}
       </div>${resumo}</div>
     <div class="rr-bloco"><div class="rr-bloco-tit">3. Verbas
-      <button class="btn small out" style="float:right" type="button" onclick="rrRecalcularFerias(rrFeriasAtual,true); rrRenderFerias()">↺ Recalcular do zero</button></div>
+      <button class="btn small out" style="float:right" type="button" onclick="rrRecalcularFerias(rrFeriasAtual,true); rrAgendar(rrRenderFerias)">↺ Recalcular do zero</button></div>
       ${rrHtmlVerbas(d.verbas, "rrRenderFerias")}
       <div style="margin-top:10px"><label>Observações (saem no recibo)</label><textarea rows="2" onchange="rrFeriasAtual.obs=this.value">${esc(d.obs||"")}</textarea></div>
     </div>

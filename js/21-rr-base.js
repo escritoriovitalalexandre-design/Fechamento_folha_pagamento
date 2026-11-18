@@ -152,8 +152,8 @@ function rrComplFuncionario(empCod, ref){
   return r.funcionarios[k];
 }
 
-const RR_CAMPOS_EMPRESA = [["cnpj","CNPJ / CPF / CEI"],["endereco","Endereço"],["bairro","Bairro"],["cidade","Município"],["uf","UF"],["cep","CEP"],["cnae","CNAE"]];
-const RR_CAMPOS_FUNC = [["cpf","CPF"],["pis","PIS/PASEP/NIT"],["ctps","CTPS (nº)"],["serieCtps","CTPS (série/UF)"],["nascimento","Data de nascimento","date"],["mae","Nome da mãe"],["endereco","Endereço"],["bairro","Bairro"],["cidade","Município"],["uf","UF"],["cep","CEP"]];
+const RR_CAMPOS_EMPRESA = [["cnpj","CNPJ / CPF","","doc"],["cep","CEP (busca o endereço)","","cep"],["endereco","Endereço (rua, número)"],["bairro","Bairro"],["cidade","Município"],["uf","UF"],["cnae","CNAE"]];
+const RR_CAMPOS_FUNC = [["cpf","CPF","","doc"],["pis","PIS/PASEP/NIT","","pis"],["ctps","CTPS (nº)"],["serieCtps","CTPS (série/UF)"],["nascimento","Data de nascimento","date"],["mae","Nome da mãe"],["cep","CEP (busca o endereço)","","cep"],["endereco","Endereço (rua, número)"],["bairro","Bairro"],["cidade","Município"],["uf","UF"]];
 
 // Bloco "Quem": empresa, funcionário (ou avulso) e complemento do cadastro.
 // doc: objeto do documento em edição (precisa de empCod e ref); onChange: nome da função que re-renderiza.
@@ -165,17 +165,17 @@ function rrHtmlQuem(doc, onChange){
   const cf = (doc.empCod && doc.ref) ? rrComplFuncionario(doc.empCod, doc.ref) : {};
   const faltaEmp = doc.empCod ? RR_CAMPOS_EMPRESA.filter(([k])=>["cnpj","endereco","cidade","uf"].includes(k) && !ce[k]).length : 0;
   const faltaFun = (doc.empCod && doc.ref) ? RR_CAMPOS_FUNC.filter(([k])=>["cpf","pis"].includes(k) && !cf[k]).length : 0;
-  const campos = (lista, obj, alvo) => lista.map(([k,rot,tipo])=>`<div><label>${rot}</label><input ${tipo?`type="${tipo}"`:""} value="${esc(obj[k]||"")}" onchange="rrSalvarCompl('${alvo}','${k}',this.value)"></div>`).join("");
+  const campos = (lista, obj, alvo) => lista.map(([k,rot,tipo,mask])=>`<div><label>${rot}</label><input ${tipo?`type="${tipo}"`:""} data-k="${alvo}.${k}" data-alvo="${alvo}" ${mask?`data-mask="${mask}" inputmode="numeric"`:""} value="${esc(obj[k]||"")}" ${tipo==="date"?"onblur":"onchange"}="rrSalvarCompl('${alvo}','${k}',this.value)"></div>`).join("");
   return `<div class="rr-bloco">
     <div class="rr-bloco-tit">1. Empresa e funcionário</div>
     <div class="row" style="grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
-      <div><label>Empresa</label><select onchange="rrDoc().empCod=this.value; rrDoc().ref=''; ${onChange}()"><option value="">Selecione...</option>${emps.map(e=>`<option value="${esc(e.codigo)}"${String(e.codigo)===String(doc.empCod)?" selected":""}>${esc(e.codigo)} - ${esc(e.nome)}</option>`).join("")}</select></div>
-      <div><label>Funcionário</label><select ${doc.empCod?"":"disabled"} onchange="rrEscolherFuncionario(this.value); ${onChange}()"><option value="">${doc.empCod?"Selecione...":"Escolha a empresa"}</option>${funcs.map(x=>`<option value="${esc(x.ref)}"${x.ref===doc.ref?" selected":""}>${x.avulso?"[sem registro] ":esc(x.codigo)+" - "}${esc(x.nome)}${x.inativo?" (inativo)":""}</option>`).join("")}</select></div>
+      <div><label>Empresa</label><select onchange="rrDoc().empCod=this.value; rrDoc().ref=''; rrAgendar(${onChange})"><option value="">Selecione...</option>${emps.map(e=>`<option value="${esc(e.codigo)}"${String(e.codigo)===String(doc.empCod)?" selected":""}>${esc(e.codigo)} - ${esc(e.nome)}</option>`).join("")}</select></div>
+      <div><label>Funcionário</label><select ${doc.empCod?"":"disabled"} onchange="rrEscolherFuncionario(this.value); rrAgendar(${onChange})"><option value="">${doc.empCod?"Selecione...":"Escolha a empresa"}</option>${funcs.map(x=>`<option value="${esc(x.ref)}"${x.ref===doc.ref?" selected":""}>${x.avulso?"[sem registro] ":esc(x.codigo)+" - "}${esc(x.nome)}${x.inativo?" (inativo)":""}</option>`).join("")}</select></div>
       <div><button class="btn out" type="button" ${doc.empCod?"":"disabled"} onclick="rrNovoAvulso('${onChange}')">+ Funcionário sem registro</button></div>
     </div>
     ${doc.empCod ? `<details class="rr-compl"${faltaEmp?" open":""}><summary>Dados da empresa para o documento ${faltaEmp?`<span class="badge red">faltam ${faltaEmp}</span>`:`<span class="badge ok">completo</span>`}</summary><div class="rr-grid">${campos(RR_CAMPOS_EMPRESA, ce, "emp")}</div></details>` : ""}
     ${f ? `<details class="rr-compl"${faltaFun?" open":""}><summary>Dados do funcionário para o documento ${faltaFun?`<span class="badge red">faltam ${faltaFun}</span>`:`<span class="badge ok">completo</span>`}${f.avulso?' <span class="badge pend">sem registro</span>':""}</summary>
-        ${f.avulso ? `<div class="rr-grid">${[["nome","Nome"],["funcao","Função"],["salario","Salário"],["admissao","Admissão","date"]].map(([k,rot,tipo])=>`<div><label>${rot}</label><input ${tipo?`type="${tipo}"`:""} value="${esc(cf[k]||"")}" onchange="rrSalvarCompl('fun','${k}',this.value); ${onChange}()"></div>`).join("")}</div>` : ""}
+        ${f.avulso ? `<div class="rr-grid">${[["nome","Nome"],["funcao","Função"],["salario","Salário (R$)","","moeda"],["admissao","Admissão","date"]].map(([k,rot,tipo,mask])=>`<div><label>${rot}</label><input ${tipo?`type="${tipo}"`:""} data-k="av.${k}" ${mask?`data-mask="${mask}" inputmode="numeric"`:""} value="${esc(cf[k]||"")}" ${tipo==="date"?"onblur":"onchange"}="if(rrSalvarCompl('fun','${k}',this.value)) rrAgendar(${onChange})"></div>`).join("")}</div>` : ""}
         <div class="rr-grid">${campos(RR_CAMPOS_FUNC, cf, "fun")}</div>
         ${f.avulso ? `<button class="btn small red" type="button" style="margin-top:8px" onclick="rrExcluirAvulso('${esc(f.ref)}','${onChange}')">Excluir este funcionário sem registro</button>` : ""}
       </details>` : ""}
@@ -185,10 +185,13 @@ function rrHtmlQuem(doc, onChange){
 function rrSalvarCompl(alvo, campo, valor){
   const d = rrDoc(); if(!d || !d.empCod) return;
   const obj = alvo === "emp" ? rrComplEmpresa(d.empCod) : rrComplFuncionario(d.empCod, d.ref);
-  obj[campo] = campo === "salario" ? formatMoneyInput(valor) : String(valor||"").trim();
+  const novo = campo === "salario" ? formatMoneyInput(valor) : String(valor||"").trim();
+  if(String(obj[campo]??"") === novo) return false;
+  obj[campo] = novo;
   // Funcionário sem registro: salário/admissão/função também valem para o documento aberto
   if(alvo === "fun" && String(d.ref).startsWith("av:") && ["salario","admissao","funcao"].includes(campo)) d[campo] = obj[campo];
   save();
+  return true;
 }
 function rrEscolherFuncionario(ref){
   const d = rrDoc(); d.ref = ref;
@@ -203,7 +206,7 @@ async function rrNovoAvulso(onChange){
   rrState().avulsos.push(novo);
   d.ref = "av:" + novo.id; d.salario = ""; d.admissao = "";
   saved();
-  window[onChange]();
+  rrAgendar(window[onChange]);
   aviso("Funcionário sem registro criado. Preencha função, salário, admissão e os dados do documento logo abaixo.");
 }
 async function rrExcluirAvulso(ref, onChange){
@@ -212,7 +215,7 @@ async function rrExcluirAvulso(ref, onChange){
   if(!await confirmar(`Excluir o funcionário sem registro "${a.nome}"?\n\nDocumentos já salvos dele continuam no histórico.`)) return;
   r.avulsos = r.avulsos.filter(x=>x.id!==id);
   const d = rrDoc(); if(d && d.ref === ref) d.ref = "";
-  saved(); window[onChange]();
+  saved(); rrAgendar(window[onChange]);
 }
 
 // ---------- navegação do módulo ----------
@@ -252,9 +255,9 @@ function rrTotais(verbas){
 function rrHtmlVerbas(verbas, onChange){
   const linha = (v) => `<tr class="${v.incluir?"":"rr-excluida"}">
       <td style="width:34px;text-align:center"><input type="checkbox" ${v.incluir?"checked":""} title="Incluir no documento" onchange="rrVerbaAlterar('${v.id}','incluir',this.checked,'${onChange}')"></td>
-      <td>${v.auto?`<span class="rr-cod">${esc(v.cod||"")}</span> `:""}${v.auto?esc(v.desc):`<input value="${esc(v.desc)}" onchange="rrVerbaAlterar('${v.id}','desc',this.value,'${onChange}')">`}${v.dica?`<div class="muted" style="font-size:11px">${esc(v.dica)}</div>`:""}${(!v.auto && v.tipo==="P") ? `<label class="rr-trib"><input type="checkbox" ${v.inss?"checked":""} onchange="rrVerbaTributavel('${v.id}',this.checked,'${onChange}')"> entra no INSS/IRRF/FGTS</label>` : ""}</td>
-      <td style="width:110px"><input value="${esc(v.ref||"")}" onchange="rrVerbaAlterar('${v.id}','ref',this.value,'${onChange}')"></td>
-      <td style="width:130px"><input class="rr-valor" value="${rrBRL(rrNum(v.valor))}" onchange="rrVerbaAlterar('${v.id}','valor',this.value,'${onChange}')">${v.editado?'<div class="muted" style="font-size:11px">valor alterado à mão</div>':""}</td>
+      <td>${v.auto?`<span class="rr-cod">${esc(v.cod||"")}</span> `:""}${v.auto?esc(v.desc):`<input data-k="v.${v.id}.desc" value="${esc(v.desc)}" onchange="rrVerbaAlterar('${v.id}','desc',this.value,'${onChange}')">`}${v.dica?`<div class="muted" style="font-size:11px">${esc(v.dica)}</div>`:""}${(!v.auto && v.tipo==="P") ? `<label class="rr-trib"><input type="checkbox" ${v.inss?"checked":""} onchange="rrVerbaTributavel('${v.id}',this.checked,'${onChange}')"> entra no INSS/IRRF/FGTS</label>` : ""}</td>
+      <td style="width:110px"><input data-k="v.${v.id}.ref" value="${esc(v.ref||"")}" onchange="rrVerbaAlterar('${v.id}','ref',this.value,'${onChange}')"></td>
+      <td style="width:130px"><input class="rr-valor" data-k="v.${v.id}.valor" data-mask="moeda" inputmode="numeric" value="${rrBRL(rrNum(v.valor))}" onchange="rrVerbaAlterar('${v.id}','valor',this.value,'${onChange}')">${v.editado?'<div class="muted" style="font-size:11px">valor alterado à mão</div>':""}</td>
       <td style="width:40px">${v.auto?"":`<button class="btn small red" type="button" title="Remover" onclick="rrVerbaRemover('${v.id}','${onChange}')">🗑</button>`}</td>
     </tr>`;
   const prov = verbas.filter(v=>v.tipo==="P"), desc = verbas.filter(v=>v.tipo==="D");
@@ -270,9 +273,9 @@ function rrHtmlVerbas(verbas, onChange){
 }
 function rrVerbaAlterar(id, campo, valor, onChange){
   const v = (rrDoc().verbas||[]).find(x=>x.id===id); if(!v) return;
-  if(campo === "valor"){ v.valor = rr2(rrNum(valor)); if(v.auto) v.editado = true; }
-  else v[campo] = valor;
-  window[onChange]();
+  if(campo === "valor"){ const n = rr2(rrNum(valor)); if(n === rr2(rrNum(v.valor))) return; v.valor = n; if(v.auto) v.editado = true; }
+  else { if(v[campo] === valor) return; v[campo] = valor; }
+  rrAgendar(window[onChange]);
 }
 async function rrVerbaAdicionar(tipo, onChange){
   const desc = await perguntar(tipo==="P" ? "Descrição do provento (ex.: Horas extras 50%, Comissões):" : "Descrição do desconto (ex.: Vale, Adiantamento, Faltas):", "");
@@ -282,13 +285,13 @@ async function rrVerbaAdicionar(tipo, onChange){
   const d = rrDoc(); if(!Array.isArray(d.verbas)) d.verbas = [];
   const trib = tipo === "P"; // provento lançado à mão: por padrão entra no INSS/IRRF/FGTS (dá para desmarcar)
   d.verbas.push({id: rrId(), cod: "", desc: desc.trim(), ref: "", tipo, valor: rr2(rrNum(val)), incluir: true, auto: false, inss: trib, irrf: trib, fgts: trib});
-  window[onChange]();
+  rrAgendar(window[onChange]);
 }
 function rrVerbaTributavel(id, marcado, onChange){
   const v = (rrDoc().verbas||[]).find(x=>x.id===id); if(!v) return;
-  v.inss = v.irrf = v.fgts = !!marcado; window[onChange]();
+  v.inss = v.irrf = v.fgts = !!marcado; rrAgendar(window[onChange]);
 }
-function rrVerbaRemover(id, onChange){ const d = rrDoc(); d.verbas = (d.verbas||[]).filter(v=>v.id!==id); window[onChange](); }
+function rrVerbaRemover(id, onChange){ const d = rrDoc(); d.verbas = (d.verbas||[]).filter(v=>v.id!==id); rrAgendar(window[onChange]); }
 
 // ---------- impressão ----------
 function rrAbrirImpressao(titulo, corpo, estiloExtra){
@@ -296,7 +299,7 @@ function rrAbrirImpressao(titulo, corpo, estiloExtra){
   if(!w){ aviso("O navegador bloqueou a janela de impressão. Libere pop-ups para este site e tente de novo."); return; }
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>
     @page{size:A4;margin:10mm}
-    *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:11px}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact} body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:11px}
     .barra{position:sticky;top:0;background:#1B3A6B;color:#fff;padding:8px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between}
     .barra button{background:#fff;color:#1B3A6B;border:0;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer}
     @media print{.barra{display:none}}
@@ -310,4 +313,101 @@ function rrDadosDocumento(d){
   const f = rrFuncionario(d.empCod, d.ref) || {};
   const cf = d.ref ? rrComplFuncionario(d.empCod, d.ref) : {};
   return {emp, ce, f, cf};
+}
+
+
+// ---------- digitação sem atrapalhar ----------
+// Recalcular redesenha a tela. Para não tirar o cursor do lugar nem "engolir" cliques:
+//  - o redesenho acontece depois do clique terminar (se o mouse estiver pressionado);
+//  - o campo que estava com o cursor volta a ficar com o cursor (pelo data-k);
+//  - campos de data só gravam quando você sai deles (onblur), então dá para digitar a data inteira.
+let rrPonteiroPressionado = false;
+document.addEventListener("pointerdown", ()=>{ rrPonteiroPressionado = true; }, true);
+document.addEventListener("pointerup", ()=>{ setTimeout(()=>{ rrPonteiroPressionado = false; }, 0); }, true);
+function rrAgendar(render){
+  if(typeof render !== "function") return;
+  const rodar = () => { const foco = rrCapturarFoco(); render(); rrRestaurarFoco(foco); };
+  if(rrPonteiroPressionado) document.addEventListener("pointerup", ()=>setTimeout(rodar, 0), {once: true, capture: true});
+  else setTimeout(rodar, 0);
+}
+function rrCapturarFoco(){
+  const a = document.activeElement;
+  if(!a || !a.dataset || !a.dataset.k || !a.closest("#rrConteudo")) return null;
+  let sel = null; try{ sel = [a.selectionStart, a.selectionEnd]; }catch(e){}
+  return {k: a.dataset.k, sel};
+}
+function rrRestaurarFoco(f){
+  if(!f) return;
+  const el = document.querySelector(`#rrConteudo [data-k="${CSS.escape(f.k)}"]`);
+  if(!el) return;
+  el.focus({preventScroll: true});
+  try{ if(f.sel && f.sel[0] != null) el.setSelectionRange(f.sel[0], f.sel[1]); }catch(e){}
+}
+function rrCommit(obj, campo, valor, render){
+  if(String(obj[campo] ?? "") === String(valor)) return;
+  obj[campo] = valor;
+  rrAgendar(render);
+}
+// Campo padrão das telas do módulo. mascara: "moeda" | "doc" | "pis" | "cep"
+function rrInput(nomeObj, obj, k, tipo, mascara, extra, nomeRender){
+  const ev = tipo === "date" ? "onblur" : "onchange";
+  return `<input ${tipo?`type="${tipo}"`:""} data-k="${k}" ${mascara?`data-mask="${mascara}" inputmode="numeric"`:""} value="${esc(obj[k]??"")}" ${ev}="rrCommit(${nomeObj},'${k}',this.value,${nomeRender})" ${extra||""}>`;
+}
+
+// ---------- máscaras (CPF/CNPJ, PIS, CEP, valores) ----------
+function rrMascarar(tipo, valor){
+  const dig = String(valor||"").replace(/\D/g, "");
+  if(tipo === "moeda"){
+    if(!dig) return "";
+    return (parseInt(dig.slice(0, 13), 10) / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+  const aplicar = (d, padrao) => { let i = 0, out = ""; for(const ch of padrao){ if(i >= d.length) break; out += ch === "#" ? d[i++] : ch; } return out; };
+  if(tipo === "doc") return dig.length <= 11 ? aplicar(dig, "###.###.###-##") : aplicar(dig.slice(0,14), "##.###.###/####-##");
+  if(tipo === "pis") return aplicar(dig.slice(0,11), "###.#####.##-#");
+  if(tipo === "cep") return aplicar(dig.slice(0,8), "#####-###");
+  return valor;
+}
+document.addEventListener("input", (ev)=>{
+  const el = ev.target;
+  if(!el || !el.dataset || !el.dataset.mask) return;
+  const novo = rrMascarar(el.dataset.mask, el.value);
+  if(novo !== el.value){ el.value = novo; try{ el.setSelectionRange(novo.length, novo.length); }catch(e){} }
+  if(el.dataset.mask === "cep" && novo.replace(/\D/g,"").length === 8) rrBuscarCep(el, novo);
+}, true);
+// Valor colado como "3.000,00" ou "3000" vira o valor certo (e não centavos)
+document.addEventListener("paste", (ev)=>{
+  const el = ev.target;
+  if(!el || !el.dataset || el.dataset.mask !== "moeda") return;
+  const txt = (ev.clipboardData || window.clipboardData)?.getData("text") || "";
+  ev.preventDefault();
+  el.value = rrBRL(rrNum(txt));
+  el.dispatchEvent(new Event("change", {bubbles: true}));
+}, true);
+
+// ---------- CEP → endereço (ViaCEP) ----------
+let rrUltimoCep = "";
+async function rrBuscarCep(el, cep){
+  const dig = cep.replace(/\D/g, "");
+  if(dig === rrUltimoCep) return;
+  rrUltimoCep = dig;
+  const alvo = el.dataset.alvo; // "emp" ou "fun"
+  try{
+    const r = await fetch(`https://viacep.com.br/ws/${dig}/json/`);
+    const j = await r.json();
+    if(!r.ok || j.erro){ aviso("CEP não encontrado. Confira o número ou preencha o endereço à mão."); return; }
+    const d = rrDoc(); if(!d || !d.empCod) return;
+    const obj = alvo === "emp" ? rrComplEmpresa(d.empCod) : rrComplFuncionario(d.empCod, d.ref);
+    obj.cep = cep;
+    if(j.logradouro) obj.endereco = j.logradouro + ", ";
+    if(j.bairro) obj.bairro = j.bairro;
+    if(j.localidade) obj.cidade = j.localidade;
+    if(j.uf) obj.uf = j.uf;
+    save();
+    const render = rrAba === "rescisao" ? rrRenderRescisao : rrAba === "ferias" ? rrRenderFerias : rrRenderPagamento;
+    render();
+    const campoEnd = document.querySelector(`#rrConteudo [data-k="${alvo}.endereco"]`);
+    if(campoEnd){ campoEnd.focus(); const n = campoEnd.value.length; try{ campoEnd.setSelectionRange(n, n); }catch(e){} }
+  }catch(e){
+    aviso("Não consegui buscar o CEP agora (sem internet?). Preencha o endereço à mão.");
+  }
 }

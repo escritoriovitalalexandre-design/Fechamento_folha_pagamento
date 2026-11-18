@@ -182,9 +182,9 @@ function rrRenderRescisao(){
   const b = rrRecalcularRescisao(d, false);
   const t = RR_TIPOS_RESCISAO[d.tipo];
   const campo = (rot, html, dica) => `<div><label>${rot}</label>${html}${dica?`<div class="muted" style="font-size:11px;margin-top:2px">${dica}</div>`:""}</div>`;
-  const inp = (k, tipo, extra) => `<input ${tipo?`type="${tipo}"`:""} value="${esc(d[k]??"")}" onchange="rrRescisaoAtual.${k}=this.value; rrRenderRescisao()" ${extra||""}>`;
-  const tipos = Object.entries(RR_TIPOS_RESCISAO).map(([k,x])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipo" ${d.tipo===k?"checked":""} onchange="rrRescisaoAtual.tipo='${k}'; rrRescisaoAtual.aviso='${x.avisos[0]||""}'; rrRenderRescisao()"> ${esc(x.nome)}</label>`).join("");
-  const avisos = t.avisos.map(a=>`<label class="rr-opcao${d.aviso===a?" sel":""}" title="${esc(RR_AVISO_NOMES[a][1])}"><input type="radio" name="rrAviso" ${d.aviso===a?"checked":""} onchange="rrRescisaoAtual.aviso='${a}'; rrRenderRescisao()"> ${esc(RR_AVISO_NOMES[a][0])}<small>${esc(RR_AVISO_NOMES[a][1])}</small></label>`).join("");
+  const inp = (k, tipo, extra) => rrInput("rrRescisaoAtual", d, k, tipo, extra==="moeda"?"moeda":"", extra==="moeda"?"":extra, "rrRenderRescisao");
+  const tipos = Object.entries(RR_TIPOS_RESCISAO).map(([k,x])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipo" ${d.tipo===k?"checked":""} onchange="rrRescisaoAtual.tipo='${k}'; rrRescisaoAtual.aviso='${x.avisos[0]||""}'; rrAgendar(rrRenderRescisao)"> ${esc(x.nome)}</label>`).join("");
+  const avisos = t.avisos.map(a=>`<label class="rr-opcao${d.aviso===a?" sel":""}" title="${esc(RR_AVISO_NOMES[a][1])}"><input type="radio" name="rrAviso" ${d.aviso===a?"checked":""} onchange="rrRescisaoAtual.aviso='${a}'; rrAgendar(rrRenderRescisao)"> ${esc(RR_AVISO_NOMES[a][0])}<small>${esc(RR_AVISO_NOMES[a][1])}</small></label>`).join("");
   const exp = d.tipo==="quebra_empregador"||d.tipo==="quebra_empregado";
   const resumo = b.erros.length ? `<div class="rr-alerta">${b.erros.map(esc).join("<br>")}</div>` : `<div class="rr-chips">
       <span>Tempo de casa: <b>${b.anos} ano${b.anos===1?"":"s"}</b></span>
@@ -192,7 +192,6 @@ function rrRenderRescisao(){
       ${b.projetada!==d.dataDesligamento?`<span>Data projetada: <b>${rrDataBR(b.projetada)}</b></span>`:""}
       <span>13º: <b>${b.avos13Proj}/12</b></span><span>Férias proporcionais: <b>${b.avosFerProj}/12</b></span>
       <span>Períodos completos de férias: <b>${b.periodosCompletos}</b></span></div>`;
-  const fg = b.erros.length ? null : rrFgtsRescisao(d, b);
   document.getElementById("rrConteudo").innerHTML = `${rrHtmlAvisoTabelas()}
     ${rrHtmlQuem(d, "rrRenderRescisao")}
     <div class="rr-bloco"><div class="rr-bloco-tit">2. Tipo de rescisão</div><div class="rr-opcoes">${tipos}</div>
@@ -203,16 +202,14 @@ function rrRenderRescisao(){
         ${t.avisos.length?campo("Data do aviso", inp("dataAviso","date"), "Em branco = mesma do desligamento"):""}
         ${campo("Desligamento (último dia)", inp("dataDesligamento","date"), d.aviso==="trabalhado"?"Último dia do aviso trabalhado":"")}
         ${exp?campo("Fim previsto da experiência", inp("fimExperiencia","date")):""}
-        ${campo("Salário (R$)", inp("salario","", `onblur="this.value=formatMoneyInput(this.value)"`))}
-        ${campo("Férias vencidas não gozadas", `<select onchange="rrRescisaoAtual.feriasVencidas=this.value; rrRenderRescisao()">${[0,1,2].map(n=>`<option value="${n}"${Number(d.feriasVencidas)===n?" selected":""}>${n===0?"Nenhuma":n+(n===1?" período":" períodos")}</option>`).join("")}</select>`, b.periodosCompletos!==undefined?`Períodos completos desde a admissão: ${b.periodosCompletos}`:"")}
+        ${campo("Salário (R$)", inp("salario","", "moeda"))}
+        ${campo("Férias vencidas não gozadas", `<select onchange="rrRescisaoAtual.feriasVencidas=this.value; rrAgendar(rrRenderRescisao)">${[0,1,2].map(n=>`<option value="${n}"${Number(d.feriasVencidas)===n?" selected":""}>${n===0?"Nenhuma":n+(n===1?" período":" períodos")}</option>`).join("")}</select>`, b.periodosCompletos!==undefined?`Períodos completos desde a admissão: ${b.periodosCompletos}`:"")}
         ${campo("Dependentes para IRRF", inp("dependentes","number",'min="0"'))}
-        ${campo("13º já adiantado (R$)", inp("adiant13","", `onblur="this.value=formatMoneyInput(this.value)"`), "1ª parcela paga no ano, se houver")}
-        ${t.multa?campo("Saldo do FGTS para fins rescisórios (R$)", inp("saldoFgts","", `onblur="this.value=formatMoneyInput(this.value)"`), "Opcional: calcula a multa de " + t.multa + "%"):""}
+        ${campo("13º já adiantado (R$)", inp("adiant13","", "moeda"), "1ª parcela paga no ano, se houver")}
       </div>${resumo}</div>
     <div class="rr-bloco"><div class="rr-bloco-tit">4. Verbas <span class="muted" style="font-weight:400">— o sistema já trouxe tudo a que tem direito; desmarque o que não for pagar ou adicione outras</span>
-      <button class="btn small out" style="float:right" type="button" onclick="rrRecalcularRescisao(rrRescisaoAtual,true); rrRenderRescisao()">↺ Recalcular do zero</button></div>
+      <button class="btn small out" style="float:right" type="button" onclick="rrRecalcularRescisao(rrRescisaoAtual,true); rrAgendar(rrRenderRescisao)">↺ Recalcular do zero</button></div>
       ${rrHtmlVerbas(d.verbas, "rrRenderRescisao")}
-      ${fg?`<div class="rr-fgts">FGTS (informativo, não entra no líquido): depósito do mês 8% sobre R$ ${rrBRL(fg.baseFgts)} = <b>R$ ${rrBRL(fg.deposito)}</b>${fg.pct?` · multa de ${fg.pct}%: <b>${fg.saldo?"R$ "+rrBRL(fg.multa):"informe o saldo do FGTS"}</b>`:""}</div>`:""}
       <div style="margin-top:10px"><label>Observações (saem no documento)</label><textarea rows="2" onchange="rrRescisaoAtual.obs=this.value">${esc(d.obs||"")}</textarea></div>
     </div>
     <div class="rr-bloco rr-acoes">
@@ -275,7 +272,8 @@ function rrImprimirRescisao(modelo){
   if(b.erros.length) return aviso(b.erros.join("\n"));
   rrRecalcularRescisao(d, false);
   const {emp, ce, f, cf} = rrDadosDocumento(d);
-  const t = b.t, tot = rrTotais(d.verbas), fg = rrFgtsRescisao(d, b);
+  const t = b.t, tot = rrTotais(d.verbas);
+  const semRegistro = String(d.ref).startsWith("av:");
   const prov = d.verbas.filter(v=>v.incluir && v.tipo==="P" && rrNum(v.valor)), desc = d.verbas.filter(v=>v.incluir && v.tipo==="D" && rrNum(v.valor));
   const endEmp = [ce.endereco, ce.bairro, ce.cidade && (ce.cidade + (ce.uf?"/"+ce.uf:"")), ce.cep && "CEP " + ce.cep].filter(Boolean).join(" · ");
   const titulo = `Rescisão - ${f.nome||""}`;
@@ -284,7 +282,7 @@ function rrImprimirRescisao(modelo){
     const corpo = `<div class="doc">
       <div class="topo"><div><div class="emp">${esc(emp.nome||"")}</div><div class="cinza">${esc(ce.cnpj?"CNPJ "+ce.cnpj:"")}${endEmp?" · "+esc(endEmp):""}</div></div><div class="selo">Rescisão de contrato<br><b>${esc(t.nome)}</b></div></div>
       <div class="cards">
-        <div><span>Funcionário</span><b>${esc(f.nome||"")}</b><small>${esc(f.funcao||d.funcao||"")}${cf.cpf?" · CPF "+esc(cf.cpf):""}</small></div>
+        <div><span>Funcionário</span><b>${esc(f.nome||"")}</b><small>${esc(f.funcao||d.funcao||"")}${cf.cpf?" · CPF "+esc(cf.cpf):""}${semRegistro?" · sem registro":""}</small></div>
         <div><span>Admissão</span><b>${rrDataBR(d.admissao)}</b><small>${b.anos} ano${b.anos===1?"":"s"} de casa</small></div>
         <div><span>Desligamento</span><b>${rrDataBR(d.dataDesligamento)}</b><small>${b.diasAviso?"Aviso "+esc(RR_AVISO_NOMES[b.aviso]?.[0]||"")+" · "+b.diasAviso+" dias":"Sem aviso prévio"}</small></div>
         <div><span>Salário</span><b>R$ ${rrBRL(b.sal)}</b><small>${b.projetada!==d.dataDesligamento?"Projeção: "+rrDataBR(b.projetada):""}</small></div>
@@ -292,7 +290,6 @@ function rrImprimirRescisao(modelo){
       <div class="duas"><div><h3 class="p">Proventos</h3><table><tr><th>Verba</th><th class="c">Ref.</th><th class="r">Valor</th></tr>${linhas(prov)}<tr class="tot"><td colspan="2">Total de proventos</td><td class="r">${rrBRL(tot.prov)}</td></tr></table></div>
         <div><h3 class="d">Descontos</h3><table><tr><th>Verba</th><th class="c">Ref.</th><th class="r">Valor</th></tr>${linhas(desc)}<tr class="tot"><td colspan="2">Total de descontos</td><td class="r">${rrBRL(tot.desc)}</td></tr></table></div></div>
       <div class="liq"><span>Valor líquido a receber</span><b>R$ ${rrBRL(tot.liquido)}</b><small>${esc(rrExtenso(tot.liquido))}</small></div>
-      ${fg.deposito||fg.multa?`<div class="cinza" style="margin-top:6px">FGTS (recolhido em guia própria): depósito do mês R$ ${rrBRL(fg.deposito)}${fg.multa?` · multa de ${fg.pct}% R$ ${rrBRL(fg.multa)}`:""}</div>`:""}
       ${d.obs?`<div class="obs"><b>Observações:</b> ${esc(d.obs)}</div>`:""}
       <p class="quit">Recebi de <b>${esc(emp.nome||"")}</b> a importância líquida de <b>R$ ${rrBRL(tot.liquido)}</b> (${esc(rrExtenso(tot.liquido))}), referente às verbas rescisórias acima discriminadas, em decorrência da rescisão do meu contrato de trabalho.</p>
       <p class="cinza">${esc(ce.cidade||"")}${ce.cidade?", ":""}${rrDataBR(rrHoje())}</p>
@@ -306,8 +303,8 @@ function rrImprimirRescisao(modelo){
       .duas{display:grid;grid-template-columns:1fr 1fr;gap:12px}h3{margin:6px 0;font-size:13px}h3.p{color:#166534}h3.d{color:#b91c1c}
       table{width:100%;border-collapse:collapse}th{font-size:10px;text-transform:uppercase;color:#667085;text-align:left;border-bottom:1px solid #d8e0ea;padding:4px}
       td{padding:5px 4px;border-bottom:1px solid #eef2f6}.c{text-align:center}.r{text-align:right;white-space:nowrap}.tot td{font-weight:800;border-top:2px solid #d8e0ea}
-      .liq{margin-top:14px;background:#1B3A6B;color:#fff;border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:1fr auto;align-items:center}
-      .liq span{font-size:12px}.liq b{font-size:22px;text-align:right}.liq small{grid-column:1/-1;opacity:.85}
+      .liq{margin-top:14px;background:#eef4ff;color:#0f2a55;border:2px solid #1B3A6B;border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:1fr auto;align-items:center}
+      .liq span{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}.liq b{font-size:26px;font-weight:900;text-align:right;color:#0f2a55}.liq small{grid-column:1/-1;font-size:12.5px;font-weight:700;color:#1e293b;margin-top:4px}
       .obs{margin-top:10px;border:1px dashed #d8e0ea;padding:8px;border-radius:8px}.quit{margin-top:16px;line-height:1.6}
       .ass{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center}.ass div{border-top:1px solid #111;padding-top:4px}`);
     return;
@@ -332,15 +329,15 @@ function rrImprimirRescisao(modelo){
       <tr>${cel("14","Município",cf.cidade)}${cel("15","UF",cf.uf)}${cel("16","CEP",cf.cep)}${cel("17","CTPS (nº, série, UF)",[cf.ctps,cf.serieCtps].filter(Boolean).join(" "))}</tr>
       <tr>${cel("18","CPF",cf.cpf)}${cel("19","Data de nascimento",rrDataBR(cf.nascimento))}${cel("20","Nome da mãe",cf.mae,2)}</tr></table>
     <table><tr><th colspan="4">DADOS DO CONTRATO</th></tr>
-      <tr>${cel("21","Tipo de contrato",(d.tipo==="termino_exp"||d.tipo.startsWith("quebra"))?"Contrato de experiência (prazo determinado)":"Contrato por prazo indeterminado",2)}${cel("22","Causa do afastamento",t.causa,2)}</tr>
+      <tr>${cel("21","Tipo de contrato",semRegistro?"Sem registro em CTPS":(d.tipo==="termino_exp"||d.tipo.startsWith("quebra"))?"Contrato de experiência (prazo determinado)":"Contrato por prazo indeterminado",2)}${cel("22","Causa do afastamento",t.causa,2)}</tr>
       <tr>${cel("23","Remuneração mês anterior","R$ "+rrBRL(b.sal))}${cel("24","Data de admissão",rrDataBR(d.admissao))}${cel("25","Data do aviso prévio",b.diasAviso?rrDataBR(d.dataAviso||d.dataDesligamento):"")}${cel("26","Data de afastamento",rrDataBR(d.dataDesligamento))}</tr>
-      <tr>${cel("27","Código afastamento",t.cod)}${cel("28","Pensão alimentícia (%)","")}${cel("29","Categoria do trabalhador","01 - Empregado")}${cel("","Função",f.funcao||d.funcao||"")}</tr></table>
+      <tr>${cel("27","Código afastamento",semRegistro?"—":t.cod)}${cel("28","Pensão alimentícia (%)","")}${cel("29","Categoria do trabalhador",semRegistro?"—":"01 - Empregado")}${cel("","Função",f.funcao||d.funcao||"")}</tr></table>
     <table><tr><th colspan="3">DISCRIMINAÇÃO DAS VERBAS RESCISÓRIAS — VERBAS RESCISÓRIAS</th></tr>${linhasVerbas(prov)}
       <tr><td colspan="2" class="dir"><b>TOTAL RESCISÓRIO BRUTO</b></td><td><div class="v r"><b>${rrBRL(tot.prov)}</b></div></td></tr></table>
     <table><tr><th colspan="3">DEDUÇÕES</th></tr>${linhasVerbas(desc)}
       <tr><td colspan="2" class="dir"><b>TOTAL DAS DEDUÇÕES</b></td><td><div class="v r"><b>${rrBRL(tot.desc)}</b></div></td></tr>
       <tr><td colspan="2" class="dir"><b>VALOR RESCISÓRIO LÍQUIDO</b></td><td><div class="v r"><b>R$ ${rrBRL(tot.liquido)}</b></div></td></tr></table>
-    ${(fg.deposito||fg.multa||d.obs)?`<table><tr><th>INFORMAÇÕES COMPLEMENTARES</th></tr><tr><td><div class="v">${fg.deposito?`FGTS do mês da rescisão: R$ ${rrBRL(fg.deposito)}. `:""}${fg.multa?`Multa rescisória do FGTS (${fg.pct}%): R$ ${rrBRL(fg.multa)}. `:""}${esc(d.obs||"")}</div></td></tr></table>`:""}
+    ${d.obs?`<table><tr><th>INFORMAÇÕES COMPLEMENTARES</th></tr><tr><td><div class="v">${esc(d.obs)}</div></td></tr></table>`:""}
     <table><tr><th>TERMO DE QUITAÇÃO DE RESCISÃO DO CONTRATO DE TRABALHO</th></tr><tr><td class="txt">
       Foi realizada a rescisão do contrato de trabalho do trabalhador acima qualificado, nos termos do artigo 477 da Consolidação das Leis do Trabalho (CLT), sendo efetuado nesta data o pagamento das verbas rescisórias especificadas no corpo do TRCT, no valor líquido de <b>R$ ${rrBRL(tot.liquido)}</b> (${esc(rrExtenso(tot.liquido))}), o qual, devidamente rubricado pelas partes, é parte integrante do presente Termo de Quitação.
       <div class="local">${esc(ce.cidade||"_____________________")}, ${rrDataBR(rrHoje())}</div>
