@@ -300,3 +300,6 @@ tr.salario-atual td{background:#f0fdf4}
 .rr-opcao input[type=radio]{display:inline-block;width:auto;height:auto;margin:0 7px 0 0;padding:0}
 .rr-opcao small{flex-basis:100%;margin-left:22px}
 .rr-tab input[type=checkbox],.rr-trib input[type=checkbox]{display:inline-block;width:auto;height:auto;margin:0;padding:0}
+
+.rr-add{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rr-add select{width:auto;min-width:220px;padding:5px 8px;font-size:13px}
