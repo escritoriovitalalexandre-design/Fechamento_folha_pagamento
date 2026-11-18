@@ -32,11 +32,12 @@ function rrRecalcularPagamento(d){
       if(v.valor > 0 || v.editado) lista.push(v);
     };
     const inc = manuais.filter(v=>v.incluir && v.tipo==="P");
-    const baseINSS = inc.filter(v=>v.inss).reduce((s,v)=>s+rrNum(v.valor),0);
+    const reduz = rrReducaoBase(manuais);
+    const baseINSS = Math.max(0, inc.filter(v=>v.inss).reduce((s,v)=>s+rrNum(v.valor),0) - reduz);
     const inss = rrCalcINSS(baseINSS);
     add("inss", "INSS (previdência social)", baseINSS ? "base " + rrBRL(baseINSS) : "", inss);
     const inssUsado = antigas.inss?.editado ? rrNum(antigas.inss.valor) : inss;
-    const rend = inc.filter(v=>v.irrf).reduce((s,v)=>s+rrNum(v.valor),0);
+    const rend = Math.max(0, inc.filter(v=>v.irrf).reduce((s,v)=>s+rrNum(v.valor),0) - reduz);
     add("irrf", "IRRF", d.dependentes ? d.dependentes + " dep." : "", rrCalcIRRF(rend, inssUsado, parseInt(d.dependentes)||0, d.tipo==="decimo"));
   }
   d.verbas = manuais.concat(lista);

@@ -22,6 +22,8 @@ const RR_TIPOS_RESCISAO = {
   quebra_empregador: {nome: "Quebra da experiência pelo empregador",  causa: "Rescisão antecipada do contrato a termo pelo empregador (art. 479)", cod: "", avisos: [], multa: 40, d13: true, fprop: true},
   quebra_empregado:  {nome: "Quebra da experiência pelo empregado",   causa: "Rescisão antecipada do contrato a termo pelo empregado (art. 480)", cod: "", avisos: [], multa: 0, d13: true, fprop: true}
 };
+// Tipos que aparecem na tela (módulo usado para funcionário sem registro). Os outros continuam no código.
+const RR_TIPOS_VISIVEIS = ["sem_justa", "pedido"];
 const RR_AVISO_NOMES = {
   indenizado: ["Indenizado", "A empresa paga o aviso sem o funcionário trabalhar."],
   trabalhado: ["Trabalhado", "O funcionário cumpre o aviso trabalhando."],
@@ -133,7 +135,7 @@ function rrRecalcularRescisao(d, zerarEdicoes){
   if(b.avos13Real) add("13", "63", "13º salário proporcional", b.avos13Real + "/12 avos", "P", mes12*b.avos13Real, {inss:true, irrf:true, fgts:true, grupo:"13"});
   if(b.avos13Proj > b.avos13Real) add("13aviso", "70", "13º salário (aviso prévio indenizado)", (b.avos13Proj-b.avos13Real) + "/12 avos", "P", mes12*(b.avos13Proj-b.avos13Real), {inss:true, irrf:true, fgts:true, grupo:"13"});
   const venc = Math.max(0, parseInt(d.feriasVencidas)||0);
-  if(venc) add("fervenc", "66", "Férias vencidas", venc + (venc===1?" período":" períodos"), "P", b.sal*venc, NAO, "Períodos aquisitivos completos que não foram gozados");
+  if(venc) add("fervenc", "66", "Férias vencidas", venc===1 ? "12/12 avos" : venc + " × 12/12 avos", "P", b.sal*venc, NAO, "Período(s) aquisitivo(s) completo(s) que não foram gozados");
   if(b.avosFerReal) add("ferprop", "65", "Férias proporcionais", b.avosFerReal + "/12 avos", "P", mes12*b.avosFerReal, NAO, "Período aquisitivo desde " + rrDataBR(b.inicioPA));
   if(b.avosFerProj > b.avosFerReal) add("feraviso", "71", "Férias (aviso prévio indenizado)", (b.avosFerProj-b.avosFerReal) + "/12 avos", "P", mes12*(b.avosFerProj-b.avosFerReal), NAO);
   if(d.tipo==="quebra_empregador" && b.diasRestantesExp) add("ind479", "", "Indenização art. 479 CLT", b.diasRestantesExp + " dias ÷ 2", "P", dia*b.diasRestantesExp/2, NAO, "Metade da remuneração dos dias que faltavam para o fim da experiência");
@@ -149,14 +151,15 @@ function rrRecalcularRescisao(d, zerarEdicoes){
   // INSS e IRRF sobre o que está incluído
   const todos = lista.concat(manuais);
   const inc = todos.filter(v=>v.incluir && v.tipo==="P");
-  const baseINSS = inc.filter(v=>v.inss && v.grupo!=="13").reduce((s,v)=>s+rrNum(v.valor),0);
+  const reduz = rrReducaoBase(todos);
+  const baseINSS = Math.max(0, inc.filter(v=>v.inss && v.grupo!=="13").reduce((s,v)=>s+rrNum(v.valor),0) - reduz);
   const base13 = inc.filter(v=>v.inss && v.grupo==="13").reduce((s,v)=>s+rrNum(v.valor),0);
   const inssSal = rrCalcINSS(baseINSS), inss13 = rrCalcINSS(base13);
   add("inss", "112.1", "INSS (previdência social)", baseINSS ? "base " + rrBRL(baseINSS) : "", "D", inssSal, NAO);
   add("inss13", "112.2", "INSS sobre 13º salário", base13 ? "base " + rrBRL(base13) : "", "D", inss13, NAO);
   const inssUsado = (antigas.inss && antigas.inss.editado && !zerarEdicoes) ? rrNum(antigas.inss.valor) : inssSal;
   const inss13Usado = (antigas.inss13 && antigas.inss13.editado && !zerarEdicoes) ? rrNum(antigas.inss13.valor) : inss13;
-  const rendIR = inc.filter(v=>v.irrf && v.grupo!=="13").reduce((s,v)=>s+rrNum(v.valor),0);
+  const rendIR = Math.max(0, inc.filter(v=>v.irrf && v.grupo!=="13").reduce((s,v)=>s+rrNum(v.valor),0) - reduz);
   const rendIR13 = inc.filter(v=>v.irrf && v.grupo==="13").reduce((s,v)=>s+rrNum(v.valor),0);
   const dep = Math.max(0, parseInt(d.dependentes)||0);
   add("irrf", "114.1", "IRRF", dep ? dep + " dep." : "", "D", rrCalcIRRF(rendIR, inssUsado, dep), NAO);
@@ -183,11 +186,11 @@ function rrRenderRescisao(){
   const t = RR_TIPOS_RESCISAO[d.tipo];
   const campo = (rot, html, dica) => `<div><label>${rot}</label>${html}${dica?`<div class="muted" style="font-size:11px;margin-top:2px">${dica}</div>`:""}</div>`;
   const inp = (k, tipo, extra) => rrInput("rrRescisaoAtual", d, k, tipo, extra==="moeda"?"moeda":"", extra==="moeda"?"":extra, "rrRenderRescisao");
-  const tipos = Object.entries(RR_TIPOS_RESCISAO).map(([k,x])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipo" ${d.tipo===k?"checked":""} onchange="rrRescisaoAtual.tipo='${k}'; rrRescisaoAtual.aviso='${x.avisos[0]||""}'; rrAgendar(rrRenderRescisao)"> ${esc(x.nome)}</label>`).join("");
+  const tipos = Object.entries(RR_TIPOS_RESCISAO).filter(([k])=>RR_TIPOS_VISIVEIS.includes(k) || k===d.tipo).map(([k,x])=>`<label class="rr-opcao${d.tipo===k?" sel":""}"><input type="radio" name="rrTipo" ${d.tipo===k?"checked":""} onchange="rrRescisaoAtual.tipo='${k}'; rrRescisaoAtual.aviso='${x.avisos[0]||""}'; rrAgendar(rrRenderRescisao)"> ${esc(x.nome)}</label>`).join("");
   const avisos = t.avisos.map(a=>`<label class="rr-opcao${d.aviso===a?" sel":""}" title="${esc(RR_AVISO_NOMES[a][1])}"><input type="radio" name="rrAviso" ${d.aviso===a?"checked":""} onchange="rrRescisaoAtual.aviso='${a}'; rrAgendar(rrRenderRescisao)"> ${esc(RR_AVISO_NOMES[a][0])}<small>${esc(RR_AVISO_NOMES[a][1])}</small></label>`).join("");
   const exp = d.tipo==="quebra_empregador"||d.tipo==="quebra_empregado";
   const resumo = b.erros.length ? `<div class="rr-alerta">${b.erros.map(esc).join("<br>")}</div>` : `<div class="rr-chips">
-      <span>Tempo de casa: <b>${b.anos} ano${b.anos===1?"":"s"}</b></span>
+      <span>Tempo de serviço: <b>${rrTempoServicoTexto(d.admissao, d.dataDesligamento)}</b></span>
       ${b.diasAviso?`<span>Aviso: <b>${b.diasAviso} dias</b>${b.diasIndenizados?` (${b.diasIndenizados} indenizados)`:""}</span>`:""}
       ${b.projetada!==d.dataDesligamento?`<span>Data projetada: <b>${rrDataBR(b.projetada)}</b></span>`:""}
       <span>13º: <b>${b.avos13Proj}/12</b></span><span>Férias proporcionais: <b>${b.avosFerProj}/12</b></span>
@@ -203,7 +206,7 @@ function rrRenderRescisao(){
         ${campo("Desligamento (último dia)", inp("dataDesligamento","date"), d.aviso==="trabalhado"?"Último dia do aviso trabalhado":"")}
         ${exp?campo("Fim previsto da experiência", inp("fimExperiencia","date")):""}
         ${campo("Salário (R$)", inp("salario","", "moeda"))}
-        ${campo("Férias vencidas não gozadas", `<select onchange="rrRescisaoAtual.feriasVencidas=this.value; rrAgendar(rrRenderRescisao)">${[0,1,2].map(n=>`<option value="${n}"${Number(d.feriasVencidas)===n?" selected":""}>${n===0?"Nenhuma":n+(n===1?" período":" períodos")}</option>`).join("")}</select>`, b.periodosCompletos!==undefined?`Períodos completos desde a admissão: ${b.periodosCompletos}`:"")}
+        ${campo("Férias vencidas não gozadas", `<select onchange="rrRescisaoAtual.feriasVencidas=this.value; rrAgendar(rrRenderRescisao)">${[0,1,2].map(n=>`<option value="${n}"${Number(d.feriasVencidas)===n?" selected":""}>${n===0?"Nenhuma":n===1?"1 período (12/12 avos)":"2 períodos (24/12 avos)"}</option>`).join("")}</select>`, b.periodosCompletos!==undefined?`Períodos completos desde a admissão: ${b.periodosCompletos}`:"")}
         ${campo("Dependentes para IRRF", inp("dependentes","number",'min="0"'))}
         ${campo("13º já adiantado (R$)", inp("adiant13","", "moeda"), "1ª parcela paga no ano, se houver")}
       </div>${resumo}</div>
@@ -233,8 +236,11 @@ function rrSalvarDocumento(lista, d, rotulo){
   const i = r[lista].findIndex(x=>x.id===copia.id);
   if(i>=0) r[lista][i] = copia; else r[lista].push(copia);
   d.id = copia.id;
+  if(lista === "rescisoes") rrRescisaoAtual = rrNovaRescisao();
+  else if(lista === "recibosFerias") rrFeriasAtual = rrNovasFerias();
+  else rrPagamentoAtual = rrNovoPagamento();
   saved(); rrMostrar();
-  aviso(rotulo + " salva no histórico.");
+  aviso(rotulo + " salvo(a) no histórico. A tela foi limpa — para ver ou imprimir de novo, clique em Abrir no histórico.");
 }
 function rrSalvarRescisao(){
   const b = rrBaseRescisao(rrRescisaoAtual);
@@ -283,7 +289,7 @@ function rrImprimirRescisao(modelo){
       <div class="topo"><div><div class="emp">${esc(emp.nome||"")}</div><div class="cinza">${esc(ce.cnpj?"CNPJ "+ce.cnpj:"")}${endEmp?" · "+esc(endEmp):""}</div></div><div class="selo">Rescisão de contrato<br><b>${esc(t.nome)}</b></div></div>
       <div class="cards">
         <div><span>Funcionário</span><b>${esc(f.nome||"")}</b><small>${esc(f.funcao||d.funcao||"")}${cf.cpf?" · CPF "+esc(cf.cpf):""}${semRegistro?" · sem registro":""}</small></div>
-        <div><span>Admissão</span><b>${rrDataBR(d.admissao)}</b><small>${b.anos} ano${b.anos===1?"":"s"} de casa</small></div>
+        <div><span>Admissão</span><b>${rrDataBR(d.admissao)}</b><small>${rrTempoServicoTexto(d.admissao, d.dataDesligamento)} de serviço</small></div>
         <div><span>Desligamento</span><b>${rrDataBR(d.dataDesligamento)}</b><small>${b.diasAviso?"Aviso "+esc(RR_AVISO_NOMES[b.aviso]?.[0]||"")+" · "+b.diasAviso+" dias":"Sem aviso prévio"}</small></div>
         <div><span>Salário</span><b>R$ ${rrBRL(b.sal)}</b><small>${b.projetada!==d.dataDesligamento?"Projeção: "+rrDataBR(b.projetada):""}</small></div>
       </div>

@@ -265,9 +265,9 @@ function rrHtmlVerbas(verbas, onChange){
   const cab = '<thead><tr><th></th><th>Verba</th><th>Referência</th><th>Valor (R$)</th><th></th></tr></thead>';
   return `<div class="rr-verbas">
     <div class="rr-verbas-col"><div class="rr-verbas-tit rr-prov">Proventos</div><table class="rr-tab">${cab}<tbody>${prov.map(linha).join("")||'<tr><td colspan="5" class="muted">Nenhum provento</td></tr>'}</tbody></table>
-      <button class="btn small out" type="button" onclick="rrVerbaAdicionar('P','${onChange}')">+ Adicionar provento</button></div>
+      <div class="rr-add">${rrHtmlProntas('P', onChange)}<button class="btn small out" type="button" onclick="rrVerbaAdicionar('P','${onChange}')">+ Outro provento</button></div></div>
     <div class="rr-verbas-col"><div class="rr-verbas-tit rr-desc">Descontos</div><table class="rr-tab">${cab}<tbody>${desc.map(linha).join("")||'<tr><td colspan="5" class="muted">Nenhum desconto</td></tr>'}</tbody></table>
-      <button class="btn small out" type="button" onclick="rrVerbaAdicionar('D','${onChange}')">+ Adicionar desconto</button></div>
+      <div class="rr-add">${rrHtmlProntas('D', onChange)}<button class="btn small out" type="button" onclick="rrVerbaAdicionar('D','${onChange}')">+ Outro desconto</button></div></div>
   </div>
   <div class="rr-totais"><div>Proventos<b>R$ ${rrBRL(t.prov)}</b></div><div>Descontos<b>R$ ${rrBRL(t.desc)}</b></div><div class="rr-liq">Líquido a receber<b>R$ ${rrBRL(t.liquido)}</b></div></div>`;
 }
@@ -410,4 +410,120 @@ async function rrBuscarCep(el, cep){
   }catch(e){
     aviso("Não consegui buscar o CEP agora (sem internet?). Preencha o endereço à mão.");
   }
+}
+
+
+// ---------- tempo de serviço (anos, meses e dias) ----------
+function rrTempoServico(inicio, fim){
+  if(!rrData(inicio) || !rrData(fim) || fim < inicio) return null;
+  const ate = rrAddDias(fim, 1); // conta o último dia
+  let anos = 0, meses = 0, p = inicio;
+  while(rrAddMeses(p, 12) <= ate){ p = rrAddMeses(p, 12); anos++; }
+  while(rrAddMeses(p, 1) <= ate){ p = rrAddMeses(p, 1); meses++; }
+  const dias = rrDiasEntre(p, ate);
+  return {anos, meses, dias};
+}
+function rrTempoServicoTexto(inicio, fim){
+  const t = rrTempoServico(inicio, fim); if(!t) return "—";
+  const partes = [];
+  if(t.anos) partes.push(t.anos + (t.anos===1 ? " ano" : " anos"));
+  if(t.meses) partes.push(t.meses + (t.meses===1 ? " mês" : " meses"));
+  if(t.dias || !partes.length) partes.push(t.dias + (t.dias===1 ? " dia" : " dias"));
+  return partes.length > 1 ? partes.slice(0,-1).join(", ") + " e " + partes[partes.length-1] : partes[0];
+}
+
+// ---------- dias úteis (sábado, domingo e feriados) ----------
+function rrPascoa(ano){
+  const a = ano % 19, b = Math.floor(ano/100), c = ano % 100, d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3);
+  const h = (19*a + b - d - g + 15) % 30, i = Math.floor(c/4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7, m = Math.floor((a + 11*h + 22*l)/451);
+  const mes = Math.floor((h + l - 7*m + 114)/31), dia = ((h + l - 7*m + 114) % 31) + 1;
+  return `${ano}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+}
+function rrEhFeriado(iso){
+  const d = rrData(iso); if(!d) return false;
+  const mmdd = iso.slice(5);
+  if(typeof FERIADOS_NACIONAIS === "object" && FERIADOS_NACIONAIS[mmdd]) return true;
+  if(iso === rrAddDias(rrPascoa(d.getUTCFullYear()), -2)) return true; // Sexta-feira Santa
+  const ddmm = iso.slice(8,10) + "/" + iso.slice(5,7);
+  if((state.feriadosFixos||[]).some(f=>String(f.data||"").padStart(5,"0") === ddmm)) return true; // feriados cadastrados (municipais etc.)
+  const fech = (state.fechamentos||{})[iso.slice(0,7)];
+  if(fech && Array.isArray(fech.feriadosExtras) && fech.feriadosExtras.some(f=>f.data===iso)) return true;
+  return false;
+}
+function rrEhDiaUtil(iso){ const d = rrData(iso); if(!d) return false; const dia = d.getUTCDay(); return dia !== 0 && dia !== 6 && !rrEhFeriado(iso); }
+function rrDiaUtilAnterior(iso){ let x = iso; for(let i=0; i<15 && x && !rrEhDiaUtil(x); i++) x = rrAddDias(x, -1); return x; }
+function rrDiaSemana(iso){ const d = rrData(iso); return d ? ["domingo","segunda","terça","quarta","quinta","sexta","sábado"][d.getUTCDay()] : ""; }
+
+// ---------- verbas prontas (proventos e descontos mais usados) ----------
+// tipo: "horas" (qtd de horas × valor-hora × fator), "dias" (salário/30 × dias), "pct" (% do salário), "valor" (valor digitado), "dsr" (DSR sobre horas extras)
+// trib: entra no INSS/IRRF/FGTS (proventos) · reduz: desconto que diminui a base do INSS/IRRF (faltas, atrasos, DSR)
+const RR_VERBAS_PRONTAS = {
+  P: [
+    {nome: "Horas extras 50%", tipo: "horas", fator: 1.5, trib: true},
+    {nome: "Horas extras 100%", tipo: "horas", fator: 2, trib: true},
+    {nome: "Adicional noturno 20%", tipo: "horas", fator: 0.2, trib: true},
+    {nome: "DSR sobre horas extras", tipo: "dsr", trib: true},
+    {nome: "Comissões", tipo: "valor", trib: true},
+    {nome: "Gratificação", tipo: "valor", trib: true},
+    {nome: "Adicional de insalubridade", tipo: "valor", trib: true},
+    {nome: "Prêmio", tipo: "valor", trib: false},
+    {nome: "Ajuda de custo", tipo: "valor", trib: false}
+  ],
+  D: [
+    {nome: "Faltas", tipo: "dias", reduz: true},
+    {nome: "Atrasos", tipo: "horas", fator: 1, reduz: true},
+    {nome: "DSR (faltas)", tipo: "dias", reduz: true},
+    {nome: "Vale-transporte (6%)", tipo: "pct", pct: 6},
+    {nome: "Adiantamento salarial", tipo: "valor"},
+    {nome: "Vale / empréstimo", tipo: "valor"},
+    {nome: "Pensão alimentícia", tipo: "valor"}
+  ]
+};
+function rrHtmlProntas(tipo, onChange){
+  return `<select onchange="if(this.value!==''){rrVerbaPronta('${tipo}',Number(this.value),'${onChange}')}; this.value=''"><option value="">${tipo==="P"?"+ Provento pronto...":"+ Desconto pronto..."}</option>${RR_VERBAS_PRONTAS[tipo].map((v,i)=>`<option value="${i}">${esc(v.nome)}</option>`).join("")}</select>`;
+}
+// "7:30" ou "7,5" → 7.5 horas
+function rrHoras(txt){
+  const t = String(txt||"").trim();
+  const m = /^(\d+):(\d{1,2})$/.exec(t);
+  return m ? Number(m[1]) + Number(m[2])/60 : rrNum(t);
+}
+async function rrVerbaPronta(tipo, i, onChange){
+  const def = RR_VERBAS_PRONTAS[tipo][i]; if(!def) return;
+  const d = rrDoc(); if(!Array.isArray(d.verbas)) d.verbas = [];
+  const sal = rrNum(d.salario);
+  const divisor = rrNum(d.divisor) || 220;
+  const precisaSalario = ["horas","dias","pct","dsr"].includes(def.tipo);
+  if(precisaSalario && !sal && def.tipo !== "dsr") return aviso("Informe o salário antes, para o sistema calcular " + def.nome + ".");
+  let valor = 0, ref = "";
+  if(def.tipo === "horas"){
+    const r = await perguntar(`${def.nome}: quantas horas? (ex.: 10 ou 7:30)`, ""); if(r === null || !String(r).trim()) return;
+    const h = rrHoras(r); const hora = sal / divisor;
+    valor = hora * def.fator * h; ref = rrBRL(h).replace(",00","") + " h";
+  } else if(def.tipo === "dias"){
+    const r = await perguntar(`${def.nome}: quantos dias?`, ""); if(r === null || !String(r).trim()) return;
+    const n = rrNum(r); valor = sal/30 * n; ref = rrBRL(n).replace(",00","") + (n===1 ? " dia" : " dias");
+  } else if(def.tipo === "pct"){
+    const r = await perguntar(`${def.nome}: percentual sobre o salário`, String(def.pct)); if(r === null) return;
+    const pc = rrNum(r); valor = sal * pc/100; ref = rrBRL(pc).replace(",00","") + "%";
+  } else if(def.tipo === "dsr"){
+    const he = (d.verbas||[]).filter(v=>v.incluir && v.tipo==="P" && /horas extras|adicional noturno/i.test(v.desc)).reduce((s,v)=>s+rrNum(v.valor),0);
+    if(!he) return aviso("Lance primeiro as horas extras (ou adicional noturno); o DSR é calculado sobre elas.");
+    const cal = typeof calcCalendarioMes === "function" ? calcCalendarioMes(typeof comp === "function" ? comp() : "") : {};
+    const uteis = await perguntar("DSR: quantos dias úteis no mês (segunda a sábado, sem feriados)?", String((cal.uteis||0) + (cal.sabados||0) || 26)); if(uteis === null) return;
+    const desc = await perguntar("DSR: quantos domingos e feriados no mês?", String(cal.domingos || 4)); if(desc === null) return;
+    const u = rrNum(uteis), df = rrNum(desc);
+    if(!u) return aviso("Informe os dias úteis.");
+    valor = he / u * df; ref = `${df}/${u}`;
+  } else {
+    const r = await perguntar(`${def.nome}: valor (R$)`, ""); if(r === null || !String(r).trim()) return;
+    valor = rrNum(r);
+  }
+  d.verbas.push({id: rrId(), cod: "", desc: def.nome, ref, tipo, valor: rr2(valor), incluir: true, auto: false,
+    inss: !!def.trib, irrf: !!def.trib, fgts: !!def.trib, reduzBase: !!def.reduz});
+  rrAgendar(window[onChange]);
+}
+// Soma dos descontos que diminuem a base do INSS/IRRF (faltas, atrasos, DSR)
+function rrReducaoBase(verbas){
+  return (verbas||[]).filter(v=>v.incluir && v.tipo==="D" && v.reduzBase).reduce((s,v)=>s+rrNum(v.valor),0);
 }
